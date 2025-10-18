@@ -1,0 +1,35 @@
+{
+    "name": "@ev-platform/notification-alerts",
+    "version": "1.0.0",
+    "description": "Notification & Alerts Microservice - Email, SMS, and Push Notifications",
+    "type": "module",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "dev": "node --watch index.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "microservice",
+        "notification-alerts",
+        "ev-platform"
+    ],
+    "author": "EV Platform Team",
+    "license": "MIT",
+    "dependencies": {
+        "@ev-platform/shared": "1.0.0",
+        "cors": "^2.8.5",
+        "dotenv": "^17.2.3",
+        "express": "^5.1.0",
+        "helmet": "^8.1.0",
+        "jsonwebtoken": "^9.0.2",
+        "nodemailer": "^7.0.9",
+        "pg": "^8.16.3",
+        "pino": "^10.0.0",
+        "pino-pretty": "^13.1.1"
+    },
+    "engines": {
+        "node": ">=18.0.0",
+        "npm": ">=9.0.0"
+    }
+}

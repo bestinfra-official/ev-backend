@@ -1,0 +1,44 @@
+{
+    "name": "ev-charging-microservices",
+    "version": "1.0.0",
+    "description": "EV Charging Platform - Independent Microservices Architecture",
+    "main": "index.js",
+    "type": "module",
+    "private": true,
+    "workspaces": [
+        "services/*",
+        "shared"
+    ],
+    "scripts": {
+        "start": "node start-services.js",
+        "start:all": "node start-services.js all",
+        "start:auth": "node start-services.js auth-management",
+        "start:gateway": "node index.js",
+        "setup": "npm install",
+        "install:all": "npm install",
+        "clean": "node clean-deps.js",
+        "postinstall": "echo '\n✅ Dependencies installed successfully!\n\nRun: npm start\n'"
+    },
+    "devDependencies": {
+        "@types/node": "^24.7.1",
+        "concurrently": "^9.2.1",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.9.3"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "dotenv": "^17.2.3",
+        "express": "^5.1.0",
+        "helmet": "^8.1.0",
+        "http-proxy-middleware": "^3.0.5",
+        "nodemon": "^3.1.10"
+    },
+    "keywords": [
+        "ev-charging",
+        "microservices",
+        "api-gateway",
+        "electric-vehicle"
+    ],
+    "author": "EV Platform Team",
+    "license": "MIT"
+}

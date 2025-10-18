@@ -1,0 +1,9 @@
+{
+    "name": "@ev-platform/shared",
+    "version": "1.0.0",
+    "type": "module",
+    "main": "index.js",
+    "description": "Shared utilities and configurations for EV Platform",
+    "author": "EV Platform Team",
+    "license": "MIT"
+}
