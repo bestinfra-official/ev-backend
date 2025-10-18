@@ -14,21 +14,40 @@ dotenv.config({ silent: true });
 class Database {
     constructor() {
         this.pool = null;
-        this.config = {
-            host: process.env.DATABASE_HOST || "localhost",
-            port: parseInt(process.env.DATABASE_PORT || "5432"),
-            database: process.env.DATABASE_NAME || "ev",
-            user: process.env.DATABASE_USER || "postgres",
-            password: process.env.DATABASE_PASSWORD || "",
-            min: parseInt(process.env.DB_POOL_MIN || "2"),
-            max: parseInt(process.env.DB_POOL_MAX || "10"),
-            idleTimeoutMillis: parseInt(
-                process.env.DB_IDLE_TIMEOUT_MS || "30000"
-            ),
-            connectionTimeoutMillis: parseInt(
-                process.env.DB_CONNECTION_TIMEOUT_MS || "5000"
-            ),
-        };
+
+        // Use DATABASE_URL if provided, otherwise fall back to individual variables
+        const databaseUrl = process.env.DATABASE_URL;
+
+        if (databaseUrl) {
+            this.config = {
+                connectionString: databaseUrl,
+                min: parseInt(process.env.DB_POOL_MIN || "2"),
+                max: parseInt(process.env.DB_POOL_MAX || "10"),
+                idleTimeoutMillis: parseInt(
+                    process.env.DB_IDLE_TIMEOUT_MS || "30000"
+                ),
+                connectionTimeoutMillis: parseInt(
+                    process.env.DB_CONNECTION_TIMEOUT_MS || "5000"
+                ),
+            };
+        } else {
+            // Fallback to individual environment variables
+            this.config = {
+                host: process.env.DATABASE_HOST || "localhost",
+                port: parseInt(process.env.DATABASE_PORT || "5432"),
+                database: process.env.DATABASE_NAME || "ev",
+                user: process.env.DATABASE_USER || "postgres",
+                password: process.env.DATABASE_PASSWORD || "",
+                min: parseInt(process.env.DB_POOL_MIN || "2"),
+                max: parseInt(process.env.DB_POOL_MAX || "10"),
+                idleTimeoutMillis: parseInt(
+                    process.env.DB_IDLE_TIMEOUT_MS || "30000"
+                ),
+                connectionTimeoutMillis: parseInt(
+                    process.env.DB_CONNECTION_TIMEOUT_MS || "5000"
+                ),
+            };
+        }
     }
 
     /**
