@@ -33,7 +33,7 @@ const PORT = process.env.PORT || GATEWAY_PORT;
 // Middleware
 app.use(
     helmet({
-        contentSecurityPolicy: false, // Disable CSP for Swagger UI
+        contentSecurityPolicy: false, // Disable CSP for Swagger UI and documentation
     })
 );
 
