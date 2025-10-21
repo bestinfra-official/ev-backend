@@ -26,8 +26,21 @@ const SERVICE_NAME = "auth-management";
 const logger = createLogger(SERVICE_NAME);
 
 // Middleware
-app.use(helmet());
-app.use(cors());
+app.use(
+    helmet({
+        contentSecurityPolicy: false, // Disable CSP for development
+    })
+);
+
+// CORS configuration for development
+app.use(
+    cors({
+        origin: true, // Allow all origins in development
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-API-Version"],
+    })
+);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
