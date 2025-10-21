@@ -14,6 +14,8 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./docs/swagger.config.js";
 import { versionedRoutes, legacyRoutes } from "./config/routes.config.js";
 import { setupProxyRoutes } from "./middleware/proxy.middleware.js";
 import {
@@ -29,15 +31,44 @@ const app = express();
 const PORT = process.env.PORT || GATEWAY_PORT;
 
 // Middleware
-app.use(helmet());
-app.use(cors());
+app.use(
+    helmet({
+        contentSecurityPolicy: false, // Disable CSP for Swagger UI
+    })
+);
+
+// CORS configuration for development
+app.use(
+    cors({
+        origin: true, // Allow all origins in development
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-API-Version"],
+    })
+);
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
+// Request logging
 app.use((req, res, next) => {
     console.log(`${req.method} ${req.originalUrl}`);
+    console.log("Headers:", req.headers);
     next();
 });
+
+// CORS middleware handles preflight OPTIONS requests automatically
+
+// Swagger Documentation
+app.use(
+    "/api-docs",
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, {
+        customCss: ".swagger-ui .topbar { display: none }",
+        customSiteTitle: "EV Charging Platform API Documentation",
+        customfavIcon: "/favicon.ico",
+    })
+);
 
 // API Version info endpoint
 app.get("/api/versions", (req, res) => {
@@ -50,11 +81,21 @@ app.get("/api/versions", (req, res) => {
             documentation: {
                 usage: "Include version in URL (e.g., /api/v1/...) or use X-API-Version header",
                 example: {
-                    url: "GET /api/v1/auth/health",
+                    url: `GET http://localhost:${PORT}/api/v1/auth/health`,
                     header: "X-API-Version: v1",
                 },
+                swagger: "API documentation available at /api-docs",
             },
         },
+    });
+});
+
+// Test endpoint for CORS
+app.get("/api/test", (req, res) => {
+    res.json({
+        success: true,
+        message: "CORS test successful",
+        timestamp: new Date().toISOString(),
     });
 });
 
