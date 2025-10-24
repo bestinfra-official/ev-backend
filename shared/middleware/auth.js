@@ -16,7 +16,13 @@ export const verifyToken = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
 
+        logger.debug({ authHeader }, "Authorization header received");
+
         if (!authHeader) {
+            logger.warn(
+                { path: req.path, ip: req.ip, headers: req.headers },
+                "No authorization header provided"
+            );
             throw new UnauthorizedError("No authorization header provided");
         }
 
@@ -24,7 +30,13 @@ export const verifyToken = async (req, res, next) => {
             ? authHeader.slice(7)
             : authHeader;
 
+        logger.debug({ tokenPresent: !!token, path: req.path }, "Token parsed from header");
+
         if (!token) {
+            logger.warn(
+                { path: req.path, ip: req.ip, headers: req.headers, authHeader },
+                "No token provided"
+            );
             throw new UnauthorizedError("No token provided");
         }
 
@@ -33,11 +45,22 @@ export const verifyToken = async (req, res, next) => {
             process.env.JWT_ACCESS_SECRET ||
             process.env.JWT_SECRET ||
             "access-secret-key";
-        const decoded = jwt.verify(token, accessSecret);
+
+        let decoded;
+        try {
+            decoded = jwt.verify(token, accessSecret);
+            logger.debug({ decoded }, "JWT verified successfully");
+        } catch (err) {
+            logger.warn({ error: err.message, token }, "JWT verification failed");
+            throw err;
+        }
 
         // Check if it's an access token
         if (decoded.type !== "access") {
-            logger.warn("Invalid token type", { type: decoded.type });
+            logger.warn(
+                { type: decoded.type, tokenJti: decoded.jti, userId: decoded.userId },
+                "Invalid token type"
+            );
             return res.status(401).json({
                 success: false,
                 error: "INVALID_TOKEN_TYPE",
@@ -55,8 +78,16 @@ export const verifyToken = async (req, res, next) => {
                 `revoked:access:${decoded.jti}`
             );
 
+            logger.debug(
+                { jti: decoded.jti, isTokenRevoked },
+                "Access token revocation status checked"
+            );
+
             if (isTokenRevoked) {
-                logger.warn("Token revoked", { jti: decoded.jti });
+                logger.warn(
+                    { jti: decoded.jti, userId: decoded.userId },
+                    "Token revoked"
+                );
                 return res.status(401).json({
                     success: false,
                     error: "TOKEN_REVOKED",
@@ -68,18 +99,26 @@ export const verifyToken = async (req, res, next) => {
             const userRevokedKey = `revoked:user:${decoded.userId}`;
             const revokedTimestamp = await client.get(userRevokedKey);
 
+            logger.debug(
+                { userId: decoded.userId, revokedTimestamp },
+                "User-level token revocation status checked"
+            );
+
             if (revokedTimestamp) {
                 const revokedTime = parseInt(revokedTimestamp);
                 const tokenIat = decoded.iat; // Both are now in seconds
 
                 // If token was issued before revocation, it's invalid
                 if (tokenIat < revokedTime) {
-                    logger.warn("User access tokens revoked", {
-                        userId: decoded.userId,
-                        tokenIat,
-                        revokedTime,
-                        tokenJti: decoded.jti,
-                    });
+                    logger.warn(
+                        {
+                            userId: decoded.userId,
+                            tokenIat,
+                            revokedTime,
+                            tokenJti: decoded.jti,
+                        },
+                        "User access tokens revoked (logout)"
+                    );
                     return res.status(401).json({
                         success: false,
                         error: "TOKEN_REVOKED",
@@ -89,21 +128,25 @@ export const verifyToken = async (req, res, next) => {
             }
         } catch (redisError) {
             // If Redis is unavailable, continue without revocation check
-            logger.warn("Redis unavailable for token revocation check", {
-                error: redisError.message,
-            });
+            logger.warn(
+                { error: redisError.message },
+                "Redis unavailable for token revocation check"
+            );
         }
 
         // Attach user info to request
         req.user = decoded;
         req.userId = decoded.userId || decoded.id;
 
-        logger.debug("Token verified", { userId: req.userId });
+        logger.debug({ userId: req.userId, user: decoded }, "Token verified and user attached");
 
         next();
     } catch (error) {
         if (error.name === "JsonWebTokenError") {
-            logger.warn("Invalid token", { error: error.message });
+            logger.warn(
+                { error: error.message, path: req.path, headers: req.headers },
+                "Invalid token"
+            );
             return res.status(401).json({
                 success: false,
                 error: "INVALID_TOKEN",
@@ -112,7 +155,10 @@ export const verifyToken = async (req, res, next) => {
         }
 
         if (error.name === "TokenExpiredError") {
-            logger.warn("Token expired", { error: error.message });
+            logger.warn(
+                { error: error.message, path: req.path, headers: req.headers },
+                "Token expired"
+            );
             return res.status(401).json({
                 success: false,
                 error: "TOKEN_EXPIRED",
@@ -121,6 +167,7 @@ export const verifyToken = async (req, res, next) => {
             });
         }
 
+        logger.error({ error, path: req.path }, "Unexpected error in verifyToken");
         next(error);
     }
 };

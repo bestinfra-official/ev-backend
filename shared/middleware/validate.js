@@ -1,9 +1,11 @@
 /**
  * Validation Middleware
  * Validates requests using Zod schemas
+ * Shared across all microservices
  */
 
-import { createLogger, errorResponse } from "@ev-platform/shared";
+import { createLogger } from "../utils/logger.js";
+import { errorResponse } from "../utils/response.js";
 
 const logger = createLogger("validation-middleware");
 

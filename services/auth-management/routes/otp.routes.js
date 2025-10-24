@@ -12,7 +12,6 @@ import {
     resendOtp,
     testProtectedRoute,
 } from "../controllers/otp.controller.js";
-import { validate } from "../middleware/validate.middleware.js";
 import {
     ipRateLimit,
     phoneRateLimit,
@@ -24,7 +23,7 @@ import {
     logoutSchema,
     resendOtpSchema,
 } from "../validation/schemas/otp.schema.js";
-import { verifyToken } from "@ev-platform/shared";
+import { verifyToken, validate } from "@ev-platform/shared";
 
 const router = express.Router();
 

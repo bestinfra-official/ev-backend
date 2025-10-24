@@ -106,57 +106,61 @@ export async function requestOtp(req, res) {
         // 2. Bloom filter (O(1), cheap rejection)
         // 3. Database (indexed query, fallback)
         //
-        // Anti-enumeration policy: Return same 202 response for both
-        // existing and non-existing phones, but only send OTP for existing ones.
-        // This prevents attackers from discovering which phones are registered.
+        // New user registration: If phone doesn't exist, create a new user
+        // and send OTP to allow them to verify and register.
+        // This enables self-registration through OTP verification.
         const phoneCheck = await phoneVerificationService.checkPhoneExists(
             normalizedPhone
         );
 
-        // If phone does NOT exist, return success but don't send OTP
-        // This implements anti-enumeration security
+        // If phone does NOT exist, create a new user and proceed with OTP
         if (!phoneCheck.exists) {
-            // Log for security monitoring (detect enumeration attacks)
-            await OtpAudit.create({
-                phone: normalizedPhone,
-                eventType: "request_nonexistent_phone",
-                providerResponse: {
-                    requestId,
-                    source: phoneCheck.source,
-                    reason: "phone_not_registered",
-                },
-                ip,
-                userAgent,
-            });
-
-            // Still apply rate limits to prevent enumeration attacks
-            await otpRedisService.applyRateLimits(normalizedPhone, ip);
-
-            // Respond mentioning phone number is not registered,
-            // but keep structure same for anti-enumeration
-            const responseData = {
-                requestId,
-                phone: normalizedPhone,
-                message: "Phone number is not registered",
-                expiresIn: parseInt(process.env.OTP_TTL_SECONDS || "300"),
-            };
-
-            logger.warn(`OTP request for non-existent phone`, {
+            logger.info(`Creating new user for phone: ${normalizedPhone}`, {
                 requestId,
                 phone: normalizedPhone,
                 ip,
                 source: phoneCheck.source,
             });
 
-            // Return 202 (same as success) to prevent enumeration
-            return res
-                .status(202)
-                .json(
-                    successResponse(
-                        responseData,
-                        "Phone number is not registered"
-                    )
+            try {
+                // Extract country code from normalized phone or use provided one
+                const userCountryCode = countryCode || "IN"; // Default to India if not provided
+
+                // Create new user with unverified status
+                const newUser = await User.create({
+                    phone: normalizedPhone,
+                    countryCode: userCountryCode,
+                    isVerified: false,
+                });
+
+                // Add phone to verification system cache
+                await phoneVerificationService.addPhone(
+                    normalizedPhone,
+                    newUser
                 );
+
+                logger.info(`New user created successfully`, {
+                    requestId,
+                    phone: normalizedPhone,
+                    userId: newUser.id,
+                });
+            } catch (error) {
+                logger.error("Failed to create new user", {
+                    requestId,
+                    phone: normalizedPhone,
+                    error: error.message,
+                    stack: error.stack,
+                });
+
+                return res
+                    .status(500)
+                    .json(
+                        errorResponse(
+                            "Failed to create user account",
+                            "USER_CREATION_FAILED"
+                        )
+                    );
+            }
         }
 
         // Phone exists - proceed with OTP generation
@@ -809,6 +813,9 @@ export async function logout(req, res) {
                 .status(200)
                 .json(successResponse({}, "Logged out successfully"));
         }
+
+        // Revoke the specific refresh token used for logout
+        await otpRedisService.revokeRefreshToken(decoded.jti);
 
         // Revoke all tokens for the user (both refresh and access tokens)
         await otpRedisService.revokeAllUserTokens(decoded.userId);

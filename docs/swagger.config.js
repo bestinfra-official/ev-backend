@@ -4,7 +4,8 @@
  */
 
 import authPaths from "./swagger-paths/auth.js";
-import { GATEWAY_PORT } from "../config/ports.config.js";
+import stationPaths from "./swagger-paths/stations.js";
+import { GATEWAY_PORT } from "../config/services.config.js";
 
 const swaggerSpec = {
     openapi: "3.0.0",
@@ -15,13 +16,13 @@ const swaggerSpec = {
         contact: {
             name: "EV Platform Team",
             email: "support@evplatform.com",
-            url: "https://evplatform.com",
+            url: "https://api.bestinfra.app/ev/",
         },
         license: {
             name: "MIT",
             url: "https://opensource.org/licenses/MIT",
         },
-        termsOfService: "https://evplatform.com/terms",
+        termsOfService: "https://api.bestinfra.app/ev/terms",
     },
     servers: [
         {
@@ -29,12 +30,8 @@ const swaggerSpec = {
             description: "Development server (Default)",
         },
         {
-            url: "https://api.evplatform.com",
+            url: "https://api.bestinfra.app/ev/",
             description: "Production server",
-        },
-        {
-            url: "https://staging-api.evplatform.com",
-            description: "Staging server",
         },
     ],
     components: {
@@ -304,11 +301,11 @@ const swaggerSpec = {
                         properties: {
                             latitude: {
                                 type: "number",
-                                example: 40.7128,
+                                example: 13.0173603,
                             },
                             longitude: {
                                 type: "number",
-                                example: -74.006,
+                                example: 77.5501986,
                             },
                         },
                     },
@@ -855,7 +852,7 @@ const swaggerSpec = {
                 schema: {
                     type: "number",
                     format: "float",
-                    example: 40.7128,
+                    example: 13.0173603,
                 },
             },
             LongitudeParam: {
@@ -866,7 +863,7 @@ const swaggerSpec = {
                 schema: {
                     type: "number",
                     format: "float",
-                    example: -74.006,
+                    example: 77.5501986,
                 },
             },
             RadiusParam: {
@@ -888,6 +885,11 @@ const swaggerSpec = {
             description:
                 "User authentication and OTP verification endpoints (Fully Implemented)",
         },
+        {
+            name: "Station Discovery",
+            description:
+                "Charging station discovery and range calculation endpoints (Fully Implemented)",
+        },
     ],
     security: [
         {
@@ -896,6 +898,7 @@ const swaggerSpec = {
     ],
     paths: {
         ...authPaths,
+        ...stationPaths,
     },
 };
 

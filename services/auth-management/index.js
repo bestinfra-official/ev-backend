@@ -11,11 +11,10 @@ import {
     notFoundHandler,
     successResponse,
 } from "@ev-platform/shared";
-import authRoutesV1 from "./routes/auth.routes.js";
+import authRoutesV1 from "./routes/index.js";
 import otpQueueService from "./services/otp-queue.service.js";
 import smsService from "./services/sms.service.js";
 import bloomFilterService from "./services/bloom-filter.service.js";
-import phoneVerificationService from "./services/phone-verification.service.js";
 import { startWorker } from "./workers/otp.worker.js";
 
 dotenv.config({ silent: true });
@@ -90,9 +89,9 @@ const startServer = async () => {
         await database.connect();
         logger.info("Database connected");
 
-        // Connect to Redis (required for OTP system)
+        // Connect to Redis
         await redis.connect();
-        logger.info("Redis connected");
+        logger.info("Redis connected successfully");
 
         // Initialize OTP queue service
         await otpQueueService.initialize();
@@ -174,9 +173,12 @@ const shutdown = async () => {
     await otpQueueService.close();
     logger.info("Queue closed");
 
-    // Disconnect from database and Redis
-    await database.disconnect();
+    // Disconnect from Redis
     await redis.disconnect();
+    logger.info("Redis disconnected");
+
+    // Disconnect from database
+    await database.disconnect();
 
     logger.info("Shutdown complete");
     process.exit(0);

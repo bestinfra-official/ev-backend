@@ -60,7 +60,8 @@ async function populateBloomFilter(isStandalone = false) {
             await database.connect();
 
             logger.info("Connecting to Redis...");
-            await redis.connect();
+            // Redis is now initialized at the root level
+            logger.info("Using shared Redis connection");
 
             logger.info("Initializing Bloom filter...");
             await bloomFilterService.initialize();
@@ -92,7 +93,6 @@ async function populateBloomFilter(isStandalone = false) {
         // Only cleanup and exit if running standalone
         if (isStandalone) {
             await database.disconnect();
-            await redis.disconnect();
             process.exit(0);
         }
 
@@ -107,7 +107,6 @@ async function populateBloomFilter(isStandalone = false) {
         if (isStandalone) {
             try {
                 await database.disconnect();
-                await redis.disconnect();
             } catch (cleanupError) {
                 // Ignore cleanup errors
             }

@@ -54,7 +54,6 @@ async function processOtpJob(job) {
 
         await job.updateProgress(80);
 
-
         await job.updateProgress(100);
 
         const totalDuration = Date.now() - startTime;
@@ -114,9 +113,8 @@ async function processOtpJob(job) {
  */
 async function startWorker() {
     try {
-        // Connect to Redis
-        await redis.connect();
-        logger.info("Redis connected");
+        // Redis is now initialized at the root level
+        logger.info("Using shared Redis connection");
 
         // Initialize SMS service
         await smsService.initialize();
@@ -188,9 +186,6 @@ async function startWorker() {
                 // Close worker (waits for active jobs to complete)
                 await worker.close();
                 logger.info("Worker closed");
-
-                // Disconnect from Redis
-                await redis.disconnect();
 
                 logger.info("Shutdown complete");
                 process.exit(0);
