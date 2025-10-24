@@ -14,6 +14,12 @@ export {
     notFoundHandler,
     asyncHandler,
 } from "./middleware/errorHandler.js";
+export {
+    createRateLimiter,
+    rateLimiters,
+    optionalRateLimit,
+} from "./middleware/rateLimit.js";
+export { validate } from "./middleware/validate.js";
 
 // Utils
 export { default as logger, createLogger } from "./utils/logger.js";

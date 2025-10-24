@@ -10,7 +10,12 @@ import { existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { readdir } from "fs/promises";
-import { SERVICE_PORTS, GATEWAY_PORT } from "./config/ports.config.js";
+import {
+    SERVICE_PORTS,
+    GATEWAY_PORT,
+    getEnabledServices,
+    isServiceEnabled,
+} from "./config/services.config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -323,6 +328,12 @@ async function main() {
         const serviceNames = await readdir(SERVICES_DIR);
         const readyServices = serviceNames.filter(isServiceReady);
 
+        // Get enabled services from configuration
+        const enabledServices = getEnabledServices();
+        const enabledAndReadyServices = readyServices.filter((name) =>
+            enabledServices.includes(name)
+        );
+
         // Filter services based on command-line args or env var
         // Usage: npm start -- auth-management vehicle-management
         // Or:    SERVICES=auth-management npm start
@@ -338,7 +349,7 @@ async function main() {
             // Command line args take priority
             if (cliArgs[0] === "all") {
                 servicesToStart = readyServices;
-                console.log(`📌 Starting all services\n`);
+                console.log(`📌 Starting all available services\n`);
             } else {
                 servicesToStart = readyServices.filter((name) =>
                     cliArgs.includes(name)
@@ -351,7 +362,7 @@ async function main() {
             // Then check environment variable
             if (envServices[0] === "all") {
                 servicesToStart = readyServices;
-                console.log(`📌 Starting all services\n`);
+                console.log(`📌 Starting all available services\n`);
             } else {
                 servicesToStart = readyServices.filter((name) =>
                     envServices.includes(name)
@@ -361,12 +372,21 @@ async function main() {
                 );
             }
         } else {
-            // Default: only start auth-management
-            servicesToStart = readyServices.filter(
-                (name) => name === "auth-management"
+            // Default: start only enabled services
+            servicesToStart = enabledAndReadyServices;
+            console.log(`📌 Default mode: Starting enabled services only`);
+            console.log(
+                `   💡 Enabled services: ${
+                    enabledAndReadyServices.join(", ") || "none"
+                }`
             );
-            console.log(`📌 Default mode: Starting auth-management only`);
-            console.log(`   💡 To start all services: npm start -- all\n`);
+            console.log(`   💡 To start all services: npm start -- all`);
+            console.log(
+                `   💡 To start specific services: npm start -- service-name`
+            );
+            console.log(
+                `   💡 Configure enabled services in: config/service-enablement.config.js\n`
+            );
         }
 
         console.log(

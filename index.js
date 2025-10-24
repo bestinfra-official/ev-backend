@@ -23,7 +23,8 @@ import {
     serviceVersionValidationMiddleware,
 } from "./middleware/version.middleware.js";
 import { getAllVersions, DEFAULT_VERSION } from "./config/versions.config.js";
-import { GATEWAY_PORT } from "./config/ports.config.js";
+import { GATEWAY_PORT } from "./config/services.config.js";
+import { redis } from "./shared/index.js";
 
 dotenv.config({ silent: true });
 
@@ -33,7 +34,7 @@ const PORT = process.env.PORT || GATEWAY_PORT;
 // Middleware
 app.use(
     helmet({
-        contentSecurityPolicy: false, // Disable CSP for Swagger UI and documentation
+        contentSecurityPolicy: false, // Disable CSP for Swagger UI
     })
 );
 
@@ -115,14 +116,38 @@ app.use((req, res) => {
     });
 });
 
+// Initialize Redis connection
+async function initializeRedis() {
+    try {
+        await redis.connect();
+        console.log("Redis connected successfully");
+    } catch (error) {
+        console.error("Failed to connect to Redis:", error.message);
+        process.exit(1);
+    }
+}
+
 // Start server
-app.listen(PORT, () => {
-    console.log(`API Gateway running on http://localhost:${PORT}`);
-});
+async function startServer() {
+    // Initialize Redis first
+    await initializeRedis();
+
+    app.listen(PORT, () => {
+        console.log(`API Gateway running on http://localhost:${PORT}`);
+    });
+}
+
+startServer();
 
 // Graceful shutdown
-const shutdown = (signal) => {
+const shutdown = async (signal) => {
     console.log(`${signal} received, shutting down...`);
+    try {
+        await redis.disconnect();
+        console.log("Redis disconnected");
+    } catch (error) {
+        console.error("Error disconnecting Redis:", error.message);
+    }
     process.exit(0);
 };
 

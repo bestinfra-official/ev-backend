@@ -131,6 +131,7 @@ class OTPQueueService {
         if (!this.initialized) {
             await this.initialize();
         }
+        logger.info(jobData, "JOB DATA");
 
         try {
             const job = await this.queue.add("send-otp", jobData, {

@@ -11,13 +11,7 @@
     ],
     "scripts": {
         "start": "node start-services.js",
-        "start:all": "node start-services.js all",
-        "start:auth": "node start-services.js auth-management",
-        "start:gateway": "node index.js",
-        "setup": "npm install",
-        "install:all": "npm install",
-        "clean": "node clean-deps.js",
-        "postinstall": "echo '\n✅ Dependencies installed successfully!\n\nRun: npm start\n'"
+        "clean": "node clean-deps.js"
     },
     "devDependencies": {
         "@types/node": "^24.7.1",
