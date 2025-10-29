@@ -45,7 +45,31 @@ export function validate(schema) {
             }
 
             if (validated.query) {
-                req.query = validated.query;
+                logger.info("Validated query params", {
+                    before: req.query,
+                    after: validated.query,
+                });
+
+                // Merge validated query params into req.query instead of replacing
+                // req.query is read-only, so we need to set each property individually
+                Object.keys(validated.query).forEach((key) => {
+                    try {
+                        // Use Object.defineProperty to force the update on read-only properties
+                        Object.defineProperty(req.query, key, {
+                            value: validated.query[key],
+                            writable: true,
+                            enumerable: true,
+                            configurable: true,
+                        });
+                    } catch (e) {
+                        // If that fails, try direct assignment as fallback
+                        req.query[key] = validated.query[key];
+                    }
+                });
+
+                logger.info("Merged query params", {
+                    result: req.query,
+                });
             }
 
             next();

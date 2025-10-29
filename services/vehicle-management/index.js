@@ -1,3 +1,8 @@
+/**
+ * Vehicle Management Service
+ * Main application entry point for the vehicle management microservice
+ */
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -5,12 +10,11 @@ import dotenv from "dotenv";
 import {
     createLogger,
     database,
+    redis,
     errorHandler,
     notFoundHandler,
-    successResponse,
-    verifyToken,
-    asyncHandler,
 } from "@ev-platform/shared";
+import vehicleRoutes from "./routes/index.js";
 
 dotenv.config({ silent: true });
 
@@ -20,89 +24,41 @@ const SERVICE_NAME = "vehicle-management";
 const logger = createLogger(SERVICE_NAME);
 
 // Middleware
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(
+    helmet({
+        contentSecurityPolicy: false, // Disable CSP for development
+    })
+);
 
-// Request logging
+// CORS configuration for development
+app.use(
+    cors({
+        origin: true, // Allow all origins in development
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-API-Version"],
+    })
+);
+
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Log incoming requests for debugging
 app.use((req, res, next) => {
-    logger.info(`${req.method} ${req.path}`);
+    if (["POST", "PUT", "PATCH"].includes(req.method)) {
+        logger.info(`Incoming ${req.method} ${req.path}`, {
+            contentType: req.headers["content-type"],
+            contentLength: req.headers["content-length"],
+            bodyKeys: req.body ? Object.keys(req.body).length : 0,
+        });
+    }
     next();
 });
 
-// Routes
-app.get("/", (req, res) => {
-    res.json(
-        successResponse(
-            {
-                service: SERVICE_NAME,
-                port: PORT,
-                environment: process.env.NODE_ENV || "development",
-                versions: ["v1"],
-                endpoints: {
-                    v1: "/v1",
-                    health: "/health",
-                },
-            },
-            "Vehicle Management Service"
-        )
-    );
-});
+// API Routes - V1 (Stable)
+app.use("/v1", vehicleRoutes);
 
-app.get("/health", async (req, res) => {
-    const dbStats = database.getStats();
-
-    res.json(
-        successResponse({
-            service: SERVICE_NAME,
-            status: "healthy",
-            database: dbStats
-                ? {
-                      connected: true,
-                      ...dbStats,
-                  }
-                : { connected: false },
-        })
-    );
-});
-
-// V1 API routes
-const v1Router = express.Router();
-
-// Example protected route
-v1Router.get(
-    "/vehicles",
-    verifyToken,
-    asyncHandler(async (req, res) => {
-        // TODO: Get vehicles from database
-        const vehicles = []; // Replace with actual query
-
-        res.json(successResponse(vehicles, "Vehicles retrieved successfully"));
-    })
-);
-
-// Example route to add vehicle
-v1Router.post(
-    "/vehicles",
-    verifyToken,
-    asyncHandler(async (req, res) => {
-        // TODO: Add vehicle validation and save to database
-        const { make, model, year, vin } = req.body;
-
-        res.status(201).json(
-            successResponse(
-                { make, model, year, vin },
-                "Vehicle added successfully"
-            )
-        );
-    })
-);
-
-// Mount v1 routes
-app.use("/v1", v1Router);
-
-// Error handlers (must be last)
+// Error handling
 app.use(notFoundHandler);
 app.use(errorHandler);
 
@@ -113,11 +69,22 @@ const startServer = async () => {
         await database.connect();
         logger.info("Database connected");
 
+        // Redis is now initialized at the root level
+        await redis.connect();
+        logger.info("Using shared Redis connection");
+
         app.listen(PORT, () => {
             logger.info(`${SERVICE_NAME} service running on port ${PORT}`);
+            logger.info("Vehicle management service ready", {
+                port: PORT,
+                environment: process.env.NODE_ENV || "development",
+            });
         });
     } catch (error) {
-        logger.error("Failed to start server", { error: error.message });
+        logger.error("Failed to start server", {
+            error: error.message,
+            stack: error.stack,
+        });
         process.exit(1);
     }
 };
@@ -125,7 +92,13 @@ const startServer = async () => {
 // Graceful shutdown
 const shutdown = async () => {
     logger.info("Shutting down gracefully...");
+
+    // Disconnect from database
     await database.disconnect();
+
+    await redis.disconnect();
+
+    logger.info("Shutdown complete");
     process.exit(0);
 };
 

@@ -36,7 +36,7 @@ router.post(
     "/find",
     // ipRateLimit,
     // discoveryRateLimit,
-    verifyToken,
+    // verifyToken,
     validate(findStationsSchema),
     findStations
 );

@@ -82,11 +82,11 @@ export const SERVICE_ENABLEMENT = {
     "auth-management": true,
 
     // Station & Discovery Services
-    "station-discovery": true,
+    "station-discovery": false,
     "station-management": false,
 
     // Vehicle Services
-    "vehicle-management": false,
+    "vehicle-management": true,
 
     // Charging & Booking Services
     "charging-session": false,

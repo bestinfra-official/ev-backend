@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS charging_stations (
 CREATE TABLE IF NOT EXISTS vehicles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     reg_number VARCHAR(20) UNIQUE NOT NULL,
-    user_id UUID,
+    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
     battery_capacity_kwh DECIMAL(8, 2) NOT NULL,
     efficiency_kwh_per_km DECIMAL(8, 4) NOT NULL,
     efficiency_factor DECIMAL(3, 2) DEFAULT 0.88 CHECK (efficiency_factor > 0 AND efficiency_factor <= 1),
@@ -39,6 +39,9 @@ CREATE TABLE IF NOT EXISTS vehicles (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+COMMENT ON COLUMN vehicles.user_id IS 'References users(id) - BIGINT type for consistency across services';
+COMMENT ON COLUMN vehicles.id IS 'Primary key - UUID type for compatibility with paired_devices.vehicle_id';
 
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_charging_stations_location ON charging_stations USING GIST (
@@ -101,5 +104,5 @@ INSERT INTO charging_stations (name, latitude, longitude, power_kw, plugs, avail
 ON CONFLICT DO NOTHING;
 
 INSERT INTO vehicles (reg_number, user_id, battery_capacity_kwh, efficiency_kwh_per_km, efficiency_factor, reserve_km, vehicle_type, make, model, year) VALUES
-('ABC123', gen_random_uuid(), 75.0, 0.15, 0.88, 7.0, 'sedan', 'Tesla', 'Model 3', 2023)
+('ABC123', NULL, 75.0, 0.15, 0.88, 7.0, 'sedan', 'Tesla', 'Model 3', 2023)
 ON CONFLICT (reg_number) DO NOTHING;

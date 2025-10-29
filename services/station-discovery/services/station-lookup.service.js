@@ -1214,7 +1214,6 @@ class StationLookupService {
 
         try {
             // Get vehicle data
-            logger.debug({ regNumber }, "Getting vehicle data");
             const vehicle = await this.getVehicleData(regNumber);
             if (!vehicle) {
                 logger.warn({ regNumber }, "Vehicle not found");
@@ -1222,27 +1221,16 @@ class StationLookupService {
             }
 
             // Compute usable range using dynamic battery percentage
-            logger.debug(
-                { vehicle, batteryPercentage },
-                "Computing usable range"
-            );
             const usableRangeKm = this.computeUsableRange(
                 vehicle,
                 batteryPercentage
             );
-            logger.debug({ regNumber, usableRangeKm }, "Usable range computed");
 
             // Compute optimal charging strategy
-            logger.debug(
-                { usableRangeKm, batteryPercentage },
-                "Computing optimal charging strategy"
-            );
             const chargingStrategy = this.computeOptimalChargingStrategy(
                 usableRangeKm,
                 batteryPercentage
             );
-
-            logger.debug({ chargingStrategy }, "Charging strategy computed");
 
             // Calculate route distance and determine search strategy
             let totalRouteDistance = 0;
@@ -1276,22 +1264,13 @@ class StationLookupService {
                   }`
                 : "no_dest";
             const cacheKey = `${this.ZONE_CACHE_KEY_PREFIX}route:${roundedLat}:${roundedLng}:${roundedRange}:${zoneKey}:${routeKey}`;
-            logger.debug(
-                { cacheKey, totalRouteDistance, searchRadius },
-                "Route-based cache key created"
-            );
 
             // Try cache first
             let routeResults = null;
             try {
-                logger.debug({ cacheKey }, "Checking for cached route results");
                 const cached = await this._getClient().get(cacheKey);
                 if (cached) {
                     routeResults = JSON.parse(cached);
-                    logger.debug(
-                        { regNumber, totalFound: routeResults.totalFound },
-                        "Route results retrieved from cache"
-                    );
                 }
             } catch (cacheError) {
                 logger.warn(
@@ -1303,11 +1282,6 @@ class StationLookupService {
             // Cache miss - execute route-based search
             if (!routeResults) {
                 try {
-                    logger.debug(
-                        { userLocation, destination, searchRadius },
-                        "Performing route-based station search"
-                    );
-
                     // Find all stations along the route
                     routeResults = await this.findStationsAlongRoute(
                         userLocation,
@@ -1318,21 +1292,12 @@ class StationLookupService {
                         batteryPercentage
                     );
 
-                    logger.debug(
-                        { routeResults },
-                        "Route-based stations retrieved"
-                    );
-
                     // Cache the route results
                     try {
                         await this._getClient().setex(
                             cacheKey,
                             this.CACHE_TTL.ZONE,
                             JSON.stringify(routeResults)
-                        );
-                        logger.debug(
-                            { regNumber, totalFound: routeResults.totalFound },
-                            "Route results cached"
                         );
                     } catch (cacheError) {
                         logger.warn(
@@ -1361,10 +1326,6 @@ class StationLookupService {
             }
 
             // Generate route-optimized response
-            logger.debug(
-                { routeResults, chargingStrategy, userLocation, destination },
-                "Generating route-optimized response"
-            );
             const routeOptimizedResponse = this.generateRouteOptimizedResponse(
                 routeResults,
                 chargingStrategy,

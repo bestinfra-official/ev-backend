@@ -6,7 +6,6 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import multer from "multer";
 import dotenv from "dotenv";
 import {
     createLogger,
@@ -46,42 +45,17 @@ app.use(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Configure multer for form-data support
-const storage = multer.memoryStorage();
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB limit
-        files: 5, // Maximum 5 files
-        fields: 20, // Maximum 20 fields
-        fieldNameSize: 100, // Maximum field name size
-        fieldSize: 1024 * 1024, // 1MB field value limit
-    },
-    fileFilter: (req, file, cb) => {
-        // Allow common file types for station discovery (images, documents, data files)
-        const allowedTypes = [
-            "image/jpeg",
-            "image/png",
-            "image/gif",
-            "application/pdf",
-            "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/json",
-            "text/csv",
-            "application/vnd.ms-excel",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        ];
-
-        if (allowedTypes.includes(file.mimetype)) {
-            cb(null, true);
-        } else {
-            cb(new Error(`File type ${file.mimetype} not allowed`), false);
-        }
-    },
+// Log incoming requests for debugging
+app.use((req, res, next) => {
+    if (["POST", "PUT", "PATCH"].includes(req.method)) {
+        logger.info(`Incoming ${req.method} ${req.path}`, {
+            contentType: req.headers["content-type"],
+            contentLength: req.headers["content-length"],
+            bodyKeys: req.body ? Object.keys(req.body).length : 0,
+        });
+    }
+    next();
 });
-
-// Apply multer middleware for form-data support
-app.use(upload.any());
 
 // API Routes - V1 (Stable)
 app.use("/v1", stationRoutes);
@@ -151,7 +125,7 @@ const shutdown = async () => {
     await database.disconnect();
 
     await redis.disconnect();
-    
+
     logger.info("Shutdown complete");
     process.exit(0);
 };

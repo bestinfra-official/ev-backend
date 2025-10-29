@@ -14,7 +14,7 @@ dotenv.config({ silent: true });
 class Database {
     constructor() {
         this.pool = null;
-    
+
         // Use DATABASE_URL if provided, otherwise fall back to individual variables
         const databaseUrl = process.env.DATABASE_URL;
 

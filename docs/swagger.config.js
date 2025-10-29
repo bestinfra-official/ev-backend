@@ -5,6 +5,7 @@
 
 import authPaths from "./swagger-paths/auth.js";
 import stationPaths from "./swagger-paths/stations.js";
+import vehiclePaths from "./swagger-paths/vehicles.js";
 import { GATEWAY_PORT } from "../config/services.config.js";
 
 const swaggerSpec = {
@@ -278,6 +279,244 @@ const swaggerSpec = {
                     },
                 },
                 required: ["make", "model", "year", "vin"],
+            },
+
+            // Vehicle Management Schemas
+            VehicleStaticData: {
+                type: "object",
+                description:
+                    "Optional vehicle static data (make, model, year, battery specs)",
+                properties: {
+                    make: {
+                        type: "string",
+                        minLength: 1,
+                        maxLength: 100,
+                        example: "Tata",
+                        description: "Vehicle manufacturer",
+                    },
+                    model: {
+                        type: "string",
+                        minLength: 1,
+                        maxLength: 100,
+                        example: "Nexon EV",
+                        description: "Vehicle model name",
+                    },
+                    year: {
+                        type: "integer",
+                        minimum: 1900,
+                        maximum: 2026,
+                        example: 2024,
+                        description: "Vehicle manufacturing year",
+                    },
+                    battery_capacity_kwh: {
+                        type: "number",
+                        minimum: 0,
+                        example: 30.0,
+                        description: "Battery capacity in kilowatt-hours (kWh)",
+                    },
+                    efficiency_kwh_per_km: {
+                        type: "number",
+                        minimum: 0,
+                        example: 0.15,
+                        description:
+                            "Energy efficiency in kilowatt-hours per kilometer",
+                    },
+                },
+            },
+            PairVehicleBody: {
+                type: "object",
+                description: "Vehicle pairing request body",
+                properties: {
+                    chassis_number: {
+                        type: "string",
+                        minLength: 1,
+                        maxLength: 50,
+                        pattern: "^[A-Z0-9]+$",
+                        example: "VIN1234567890ABCDE",
+                        description:
+                            "Vehicle chassis number (VIN). Must contain only alphanumeric characters (uppercase).",
+                    },
+                    reg_number: {
+                        type: "string",
+                        minLength: 1,
+                        maxLength: 20,
+                        pattern: "^[A-Z0-9\\s\\-]+$",
+                        example: "DL01AB1234",
+                        description:
+                            "Vehicle registration number. Must contain only alphanumeric characters, spaces, and hyphens.",
+                    },
+                    bluetooth_mac: {
+                        type: "string",
+                        pattern: "^([0-9A-F]{2}[:\\-]){5}([0-9A-F]{2})$",
+                        example: "AA:BB:CC:DD:EE:FF",
+                        description:
+                            "Optional Bluetooth MAC address in format XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX",
+                    },
+                    vehicle_static: {
+                        $ref: "#/components/schemas/VehicleStaticData",
+                        description:
+                            "Optional vehicle static data (make, model, year, battery specifications)",
+                    },
+                },
+                required: ["chassis_number", "reg_number"],
+            },
+            PairedDeviceResponse: {
+                type: "object",
+                description: "Response data for successful vehicle pairing",
+                properties: {
+                    paired_device_id: {
+                        type: "string",
+                        format: "uuid",
+                        example: "550e8400-e29b-41d4-a716-446655440000",
+                        description: "UUID of the paired device record",
+                    },
+                    vehicle_id: {
+                        type: "string",
+                        format: "uuid",
+                        example: "550e8400-e29b-41d4-a716-446655440001",
+                        description: "UUID of the vehicle record",
+                    },
+                    message: {
+                        type: "string",
+                        example: "Vehicle paired successfully",
+                    },
+                    paired_devices_count: {
+                        type: "integer",
+                        example: 2,
+                        description:
+                            "Total number of active paired devices for the user",
+                    },
+                },
+                required: [
+                    "paired_device_id",
+                    "vehicle_id",
+                    "message",
+                    "paired_devices_count",
+                ],
+            },
+            PairedDevice: {
+                type: "object",
+                description:
+                    "Paired device information with optional expansions",
+                properties: {
+                    id: {
+                        type: "string",
+                        format: "uuid",
+                        example: "550e8400-e29b-41d4-a716-446655440000",
+                        description: "Paired device UUID",
+                    },
+                    status: {
+                        type: "string",
+                        enum: ["active", "inactive"],
+                        example: "active",
+                        description: "Device pairing status",
+                    },
+                    connected_at: {
+                        type: "string",
+                        format: "date-time",
+                        example: "2024-01-15T09:00:00Z",
+                        description:
+                            "Timestamp when the device was first connected",
+                    },
+                    device: {
+                        type: "object",
+                        properties: {
+                            bluetooth_mac: {
+                                type: "string",
+                                nullable: true,
+                                example: "AA:BB:CC:DD:EE:FF",
+                                description: "Bluetooth MAC address",
+                            },
+                        },
+                        required: ["bluetooth_mac"],
+                    },
+                    vehicle_info: {
+                        type: "object",
+                        properties: {
+                            reg_number: {
+                                type: "string",
+                                example: "DL01AB1234",
+                                description: "Vehicle registration number",
+                            },
+                            make: {
+                                type: "string",
+                                nullable: true,
+                                example: "Tata",
+                                description:
+                                    "Vehicle manufacturer (included if 'vehicle' expansion requested)",
+                            },
+                            model: {
+                                type: "string",
+                                nullable: true,
+                                example: "Nexon EV",
+                                description:
+                                    "Vehicle model (included if 'vehicle' expansion requested)",
+                            },
+                        },
+                        required: ["reg_number"],
+                    },
+                    status_info: {
+                        type: "object",
+                        nullable: true,
+                        description:
+                            "Latest vehicle status (included if 'latest_status' expansion requested)",
+                        properties: {
+                            battery_level_percent: {
+                                type: "number",
+                                nullable: true,
+                                example: 85.5,
+                                description:
+                                    "Current battery level percentage (0-100)",
+                            },
+                            range_km: {
+                                type: "number",
+                                nullable: true,
+                                example: 240.0,
+                                description: "Estimated range in kilometers",
+                            },
+                            recorded_at: {
+                                type: "string",
+                                format: "date-time",
+                                nullable: true,
+                                example: "2024-01-15T10:25:00Z",
+                                description:
+                                    "Timestamp when the status was recorded",
+                            },
+                        },
+                    },
+                },
+                required: [
+                    "id",
+                    "status",
+                    "connected_at",
+                    "device",
+                    "vehicle_info",
+                ],
+            },
+            BluetoothMAC: {
+                type: "string",
+                pattern: "^([0-9A-F]{2}[:\\-]){5}([0-9A-F]{2})$",
+                example: "AA:BB:CC:DD:EE:FF",
+                description:
+                    "Bluetooth MAC address in format XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX (case insensitive)",
+            },
+            ChassisNumber: {
+                type: "string",
+                minLength: 1,
+                maxLength: 50,
+                pattern: "^[A-Z0-9]+$",
+                example: "VIN1234567890ABCDE",
+                description:
+                    "Vehicle chassis number (VIN). Must contain only alphanumeric characters (uppercase).",
+            },
+            RegistrationNumber: {
+                type: "string",
+                minLength: 1,
+                maxLength: 20,
+                pattern: "^[A-Z0-9\\s\\-]+$",
+                example: "DL01AB1234",
+                description:
+                    "Vehicle registration number. Must contain only alphanumeric characters, spaces, and hyphens.",
             },
 
             // Station Schemas
@@ -890,6 +1129,11 @@ const swaggerSpec = {
             description:
                 "Charging station discovery and range calculation endpoints (Fully Implemented)",
         },
+        {
+            name: "Vehicle Management",
+            description:
+                "Vehicle pairing and device management endpoints. Handles pairing vehicles with Bluetooth devices, retrieving paired devices with pagination, filtering, and expansions. Includes safety features like advisory locks, idempotency, and transactional guarantees. (Fully Implemented)",
+        },
     ],
     security: [
         {
@@ -899,6 +1143,7 @@ const swaggerSpec = {
     paths: {
         ...authPaths,
         ...stationPaths,
+        ...vehiclePaths,
     },
 };
 

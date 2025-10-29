@@ -1,212 +1,157 @@
 /**
- * Proxy Middleware Configuration
- * Sets up proxy middleware for routing requests to microservices
- * Supports dynamic versioning from URL and headers
+ * Proxy Middleware for API Gateway
+ * Routes requests to appropriate microservices based on configuration
  */
 
 import { createProxyMiddleware } from "http-proxy-middleware";
-import { DEFAULT_VERSION } from "../config/versions.config.js";
+import { createLogger } from "@ev-platform/shared";
+import { isServiceEnabled } from "../config/services.config.js";
+
+const logger = createLogger("proxy-middleware");
 
 /**
- * Creates dynamic proxy middleware that handles versioning
- * Extracts version from request and forwards to appropriate service endpoint
- * @param {string} pathPattern - The API path pattern (e.g., /api/:version/auth)
- * @param {string} target - The target service URL
- * @param {Object} options - Additional options
- * @returns {Function} Express middleware
+ * Setup proxy routes for all versioned and legacy routes
+ * @param {Object} app - Express application instance
+ * @param {Array} versionedRoutes - Routes with version support
+ * @param {Array} legacyRoutes - Legacy routes for backward compatibility
  */
-export const createVersionedProxyMiddleware = (
-    pathPattern,
-    target,
-    options = {}
-) => {
-    const { serviceName = "unknown" } = options;
-
-    return createProxyMiddleware({
-        target,
-        changeOrigin: true,
-        logLevel: "silent",
-        // Ensure body parsing is handled properly
-        onProxyReq: (proxyReq, req, res) => {
-            const version = req.apiVersion || DEFAULT_VERSION;
-            const versionInfo = req.versionInfo || {};
-
-            // Forward version information to service
-            proxyReq.setHeader("X-API-Version", version);
-            proxyReq.setHeader(
-                "X-API-Version-Status",
-                versionInfo.status || "unknown"
-            );
-            proxyReq.setHeader("X-Service-Name", serviceName);
-
-            // Forward original request info
-            proxyReq.setHeader("X-Forwarded-For", req.ip);
-            proxyReq.setHeader("X-Forwarded-Host", req.hostname);
-            proxyReq.setHeader("X-Forwarded-Proto", req.protocol);
-
-            // Handle body for POST requests
-            if (
-                req.method === "POST" &&
-                req.body &&
-                Object.keys(req.body).length > 0
-            ) {
-                const bodyData = JSON.stringify(req.body);
-                proxyReq.setHeader("Content-Type", "application/json");
-                proxyReq.setHeader(
-                    "Content-Length",
-                    Buffer.byteLength(bodyData)
-                );
-
-                console.log(
-                    `📤 [Proxy] Writing body for ${req.method} ${req.path}:`,
-                    req.body
-                );
-                proxyReq.write(bodyData);
-                proxyReq.end();
-            } else {
-                console.log(
-                    `📤 [Proxy] No body to forward for ${req.method} ${req.path}`
-                );
-            }
-        },
-
-        // Dynamic path rewriting based on detected version
-        pathRewrite: (path, req) => {
-            // Get version from request (set by version middleware)
-            const version = req.apiVersion || DEFAULT_VERSION;
-
-            // Extract the service path after the version and service segment
-            // e.g., /api/v1/auth/otp/status/1 -> /otp/status/1
-            const versionPattern = /\/api\/v\d+\/[^/]+/;
-            const servicePath = path.replace(versionPattern, "");
-
-            // Rewrite to service's versioned endpoint
-            // e.g., /api/v1/auth/otp/status/1 -> /v1/otp/status/1
-            const newPath = `/${version}${servicePath}`;
-
-            return newPath;
-        },
-
-        onProxyRes: (proxyRes, req, res) => {
-            // Add gateway info to response
-            proxyRes.headers["X-Gateway"] = "EV-Platform";
-            proxyRes.headers["X-Service"] = serviceName;
-        },
-
-        onError: (err, req, res) => {
-            console.error(`❌ [Proxy Error] ${serviceName}:`, err.message, {
-                path: req.path,
-                method: req.method,
-                target,
-                bodyExists: !!req.body,
-                contentType: req.get("content-type"),
-                bodyType: typeof req.body,
-                errorCode: err.code,
-                errorStack: err.stack,
-            });
-
-            res.status(503).json({
-                success: false,
-                error: "Service unavailable",
-                message: `Unable to reach ${serviceName} service`,
-                service: serviceName,
-                version: req.apiVersion || DEFAULT_VERSION,
-                hint: "Make sure the microservice is running",
-                timestamp: new Date().toISOString(),
-            });
-        },
-    });
-};
-
-/**
- * Creates proxy middleware for legacy routes with deprecation warnings
- * @param {string} path - The API path to proxy
- * @param {string} target - The target service URL
- * @returns {Function} Express middleware
- */
-export const createLegacyProxyMiddleware = (path, target) => {
-    return createProxyMiddleware({
-        target,
-        changeOrigin: true,
-        pathRewrite: { [`^${path}`]: "/v1" },
-        logLevel: "silent",
-        onProxyReq: (proxyReq, req, res) => {
-            // Add deprecation warning headers
-            proxyReq.setHeader("X-API-Version", "v1");
-            proxyReq.setHeader("X-API-Deprecated", "true");
-            proxyReq.setHeader(
-                "X-API-Deprecated-Message",
-                "Please use /api/v1/* endpoints"
-            );
-        },
-        onProxyRes: (proxyRes, req, res) => {
-            // Add deprecation headers to response
-            proxyRes.headers["X-API-Deprecated"] = "true";
-            proxyRes.headers["X-API-Deprecated-Message"] =
-                "This endpoint is deprecated. Please use /api/v1/* endpoints";
-        },
-        onError: (err, req, res) => {
-            res.status(503).json({
-                success: false,
-                message: "Service unavailable",
-                service: path,
-                deprecated: true,
-                hint: "Use /api/v1/* endpoints instead",
-            });
-        },
-    });
-};
-
-/**
- * Sets up all proxy routes on the Express app with versioning support
- * @param {Express} app - Express application instance
- * @param {Array} routes - Array of route configurations
- * @param {Array} legacyRoutes - Array of legacy route configurations (optional)
- */
-export const setupProxyRoutes = (app, routes, legacyRoutes = []) => {
-    console.log("\n📍 Setting up proxy routes...");
-
-    // Setup versioned API routes
-    routes.forEach(
-        ({ segment, target, serviceName, supportedVersions = [] }) => {
-            if (!target) {
-                console.warn(
-                    `⚠️  Skipping route ${segment} - no target defined`
-                );
-                return;
-            }
-
-            // Build the route pattern: /api/:version/{segment}
-            // This matches: /api/v1/auth, /api/v2/auth, /api/v3/auth, etc.
-            const basePattern = `/api/:version/${segment}`;
-
-            console.log(`  ✓ ${basePattern} -> ${target} [${serviceName}]`);
-            console.log(`     Versions: ${supportedVersions.join(", ")}`);
-
-            app.use(
-                basePattern,
-                createVersionedProxyMiddleware(basePattern, target, {
-                    serviceName,
-                    supportedVersions,
-                })
-            );
-        }
+export function setupProxyRoutes(app, versionedRoutes, legacyRoutes) {
+    // Build route map for fast lookup
+    const enabledRoutes = versionedRoutes.filter((route) =>
+        isServiceEnabled(route.serviceName)
+    );
+    const enabledLegacyRoutes = legacyRoutes.filter((route) =>
+        isServiceEnabled(route.serviceName)
     );
 
-    // Setup legacy routes (redirect to v1 for backward compatibility)
-    if (legacyRoutes.length > 0) {
-        console.log("\n📍 Setting up legacy routes...");
-        legacyRoutes.forEach(({ path, target, serviceName }) => {
-            if (!target) {
-                console.warn(
-                    `⚠️  Skipping legacy route ${path} - no target defined`
-                );
-                return;
-            }
-            console.log(`  ⚠️  ${path} -> ${target} [DEPRECATED]`);
-            app.use(path, createLegacyProxyMiddleware(path, target));
-        });
-    }
+    logger.info(
+        `Setting up ${enabledRoutes.length} versioned routes and ${enabledLegacyRoutes.length} legacy routes`
+    );
 
-    console.log("\n✅ Proxy routes configured\n");
-};
+    // Create a unified proxy middleware that handles all routes
+    const proxy = createProxyMiddleware({
+        changeOrigin: true,
+        filter: function (pathname, req) {
+            // Match both versioned and legacy routes
+            return pathname.startsWith("/api/");
+        },
+        router: function (req) {
+            // Determine target based on path
+            const pathname = req.path;
+
+            // Try versioned routes first
+            const vMatch = pathname.match(/^\/api\/v\d+\/([^/]+)/);
+            if (vMatch) {
+                const segment = vMatch[1];
+                const route = enabledRoutes.find((r) => r.segment === segment);
+                if (route) {
+                    req.proxyTarget = route.target;
+                    req.proxyServiceName = route.serviceName;
+                    return route.target;
+                }
+            }
+
+            // Try legacy routes
+            for (const route of enabledLegacyRoutes) {
+                if (
+                    pathname === route.path ||
+                    pathname.startsWith(`${route.path}/`)
+                ) {
+                    req.proxyTarget = route.target;
+                    req.proxyServiceName = route.serviceName;
+                    req.isLegacy = true;
+                    return route.target;
+                }
+            }
+
+            return false; // No matching route
+        },
+        pathRewrite: function (path, req) {
+            const pathname = req.originalUrl || req.path;
+
+            // Versioned routes: /api/v1/stations/test -> /v1/test
+            const vMatch = pathname.match(
+                /^\/api\/(v\d+)\/([^/]+)(?:\/(.*))?$/
+            );
+            if (vMatch) {
+                const version = vMatch[1];
+                const rest = vMatch[3] || "";
+                const rewritten = rest ? `/${version}/${rest}` : `/${version}`;
+
+                logger.info(`Rewriting path: ${pathname} -> ${rewritten}`);
+                return rewritten;
+            }
+
+            // Legacy routes: /api/stations/test -> /v1/stations/test
+            const lMatch = pathname.match(/^\/api\/([^/]+)(?:\/(.*))?$/);
+            if (lMatch) {
+                const rest = lMatch[2] || "";
+                const rewritten = rest ? `/v1/${rest}` : "/v1";
+
+                logger.info(
+                    `Rewriting legacy path: ${pathname} -> ${rewritten}`
+                );
+                return rewritten;
+            }
+
+            return path; // Fallback
+        },
+        on: {
+            proxyReq: async (proxyReq, req, res) => {
+                const target = req.proxyTarget || "unknown";
+                const serviceName = req.proxyServiceName || "unknown";
+                logger.info(
+                    `Proxying ${req.method} ${req.originalUrl} to ${target} (${serviceName})`
+                );
+
+                // Note: http-proxy-middleware will handle body forwarding automatically
+                // We don't need to manually write the body here
+            },
+            proxyRes: (proxyRes, req, res) => {
+                logger.info(
+                    `Proxied ${req.method} ${req.originalUrl} - Status: ${proxyRes.statusCode}`
+                );
+
+                // Add deprecation headers for legacy routes
+                if (req.isLegacy) {
+                    res.setHeader("X-API-Deprecated", "true");
+                    res.setHeader(
+                        "X-API-Deprecation-Message",
+                        "Legacy endpoint is deprecated. Please use versioned endpoint."
+                    );
+                }
+            },
+            error: (err, req, res) => {
+                logger.error(
+                    `Proxy error for ${req.originalUrl}:`,
+                    err.message
+                );
+                res.status(502).json({
+                    success: false,
+                    error: "Bad Gateway",
+                    message: `Failed to proxy request to ${
+                        req.proxyServiceName || "unknown"
+                    } service`,
+                    service: req.proxyServiceName || "unknown",
+                });
+            },
+        },
+    });
+
+    // Apply the unified proxy middleware
+    app.use(proxy);
+
+    // Log configured routes
+    enabledRoutes.forEach((route) => {
+        logger.info(
+            `Proxy route configured: /api/vX/${route.segment}/* -> ${route.target} (${route.serviceName})`
+        );
+    });
+    enabledLegacyRoutes.forEach((route) => {
+        logger.info(
+            `Legacy proxy route configured: ${route.path} -> ${route.target} (${route.serviceName})`
+        );
+    });
+
+    logger.info("All proxy routes configured successfully");
+}
