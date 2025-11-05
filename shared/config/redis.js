@@ -192,6 +192,15 @@ class RedisClient {
     }
 
     /**
+     * Get raw string value without JSON parsing
+     */
+    async getRaw(key) {
+        const client = this.getClient();
+        const value = await client.get(key);
+        return value;
+    }
+
+    /**
      * Delete key
      */
     async del(key) {
@@ -231,17 +240,41 @@ class RedisClient {
     }
 
     /**
+     * Set key with expiration
+     */
+    async setex(key, seconds, value) {
+        const client = this.getClient();
+        await client.setex(key, seconds, value);
+    }
+
+    /**
+     * Increment a key
+     */
+    async incr(key) {
+        const client = this.getClient();
+        return await client.incr(key);
+    }
+
+    /**
+     * Set expiration on a key
+     */
+    async expire(key, seconds) {
+        const client = this.getClient();
+        return await client.expire(key, seconds);
+    }
+
+    /**
      * Batch get multiple keys (uses MGET for efficiency)
      * @param {string[]} keys - Array of keys to get
      * @returns {Promise<Array>} Array of values (null for missing keys)
      */
-    async mget(keys) {
+    async mget(...keys) {
         if (!keys || keys.length === 0) {
             return [];
         }
         const client = this.getClient();
         const values = await client.mget(...keys);
-        return values.map((v) => (v ? JSON.parse(v) : null));
+        return values;
     }
 
     /**

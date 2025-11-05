@@ -25,11 +25,17 @@ import {
 import { getAllVersions, DEFAULT_VERSION } from "./config/versions.config.js";
 import { GATEWAY_PORT } from "./config/services.config.js";
 import { redis } from "./shared/index.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config({ silent: true });
 
 const app = express();
 const PORT = process.env.PORT || GATEWAY_PORT;
+
+// Get directory path for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Middleware
 app.use(
@@ -48,17 +54,58 @@ app.use(
     })
 );
 
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, "public")));
+
+// Create body parser middlewares
+const jsonParser = express.json({ limit: "10mb" });
+const urlencodedParser = express.urlencoded({ extended: true, limit: "10mb" });
+
+// Skip body parsing for API routes to preserve stream for proxy
+app.use((req, res, next) => {
+    if (req.path && req.path.startsWith("/api/")) {
+        // Skip body parsing for API routes - let proxy handle raw stream
+        next();
+    } else {
+        jsonParser(req, res, next);
+    }
+});
+
+app.use((req, res, next) => {
+    if (req.path && req.path.startsWith("/api/")) {
+        // Skip body parsing for API routes - let proxy handle raw stream
+        next();
+    } else {
+        urlencodedParser(req, res, next);
+    }
+});
 
 // Request logging
 app.use((req, res, next) => {
     console.log(`${req.method} ${req.originalUrl}`);
-    console.log("Headers:", req.headers);
+    console.log("Content-Type:", req.headers["content-type"]);
+    if (["POST", "PUT", "PATCH"].includes(req.method)) {
+        if (req.body) {
+            console.log("Request body:", req.body);
+            console.log("Body type:", typeof req.body);
+            console.log("Body keys:", Object.keys(req.body));
+        } else {
+            console.log("Request body: [not parsed - will be proxied]");
+        }
+    }
     next();
 });
 
-// CORS middleware handles preflight OPTIONS requests automatically
+// Test POST route
+app.post("/test", (req, res) => {
+    console.log("Received POST request to /test");
+    console.log("Request body:", req.body);
+    res.status(200).json({
+        success: true,
+        message: "Test POST route successful",
+        receivedData: req.body,
+    });
+});
 
 // Swagger Documentation
 app.use(
@@ -70,35 +117,6 @@ app.use(
         customfavIcon: "/favicon.ico",
     })
 );
-
-// API Version info endpoint
-app.get("/api/versions", (req, res) => {
-    const versions = getAllVersions();
-    res.json({
-        success: true,
-        data: {
-            versions,
-            default: DEFAULT_VERSION,
-            documentation: {
-                usage: "Include version in URL (e.g., /api/v1/...) or use X-API-Version header",
-                example: {
-                    url: `GET http://localhost:${PORT}/api/v1/auth/health`,
-                    header: "X-API-Version: v1",
-                },
-                swagger: "API documentation available at /api-docs",
-            },
-        },
-    });
-});
-
-// Test endpoint for CORS
-app.get("/api/test", (req, res) => {
-    res.json({
-        success: true,
-        message: "CORS test successful",
-        timestamp: new Date().toISOString(),
-    });
-});
 
 // Apply version detection and validation for all API routes
 // Using a regex pattern to match /api/v1, /api/v2, etc. followed by any path

@@ -11,28 +11,18 @@ const BASE_PORTS = {
     // Microservices (using 7100-7109 range)
     AUTH_MANAGEMENT: process.env.AUTH_SERVICE_PORT || 7100,
     VEHICLE_MANAGEMENT: process.env.VEHICLE_SERVICE_PORT || 7101,
-    BLUETOOTH_PAIRING: process.env.BLUETOOTH_SERVICE_PORT || 7102,
     STATION_DISCOVERY: process.env.STATION_DISCOVERY_PORT || 7103,
-    STATION_MANAGEMENT: process.env.STATION_MANAGEMENT_PORT || 7104,
-    BOOKING_SCHEDULING: process.env.BOOKING_SERVICE_PORT || 7105,
     PAYMENT_WALLET: process.env.PAYMENT_SERVICE_PORT || 7106,
-    CHARGING_SESSION: process.env.CHARGING_SERVICE_PORT || 7107,
     NOTIFICATION_ALERTS: process.env.NOTIFICATION_SERVICE_PORT || 7108,
-    USAGE_ANALYTICS: process.env.ANALYTICS_SERVICE_PORT || 7109,
 };
 
 // Service port mapping for the orchestrator
 export const SERVICE_PORTS = {
     "auth-management": BASE_PORTS.AUTH_MANAGEMENT,
     "vehicle-management": BASE_PORTS.VEHICLE_MANAGEMENT,
-    "bluetooth-pairing": BASE_PORTS.BLUETOOTH_PAIRING,
-    "station-discovery": BASE_PORTS.STATION_DISCOVERY,
-    "station-management": BASE_PORTS.STATION_MANAGEMENT,
-    "booking-scheduling": BASE_PORTS.BOOKING_SCHEDULING,
+    "station-management": BASE_PORTS.STATION_DISCOVERY,
     "payment-wallet": BASE_PORTS.PAYMENT_WALLET,
-    "charging-session": BASE_PORTS.CHARGING_SESSION,
     "notification-alerts": BASE_PORTS.NOTIFICATION_ALERTS,
-    "usage-analytics": BASE_PORTS.USAGE_ANALYTICS,
 };
 
 // Service URLs with centralized ports
@@ -43,30 +33,15 @@ export const SERVICE_URLS = {
     VEHICLE_MANAGEMENT:
         process.env.VEHICLE_SERVICE_URL ||
         `http://localhost:${BASE_PORTS.VEHICLE_MANAGEMENT}`,
-    BLUETOOTH_PAIRING:
-        process.env.BLUETOOTH_SERVICE_URL ||
-        `http://localhost:${BASE_PORTS.BLUETOOTH_PAIRING}`,
     STATION_DISCOVERY:
         process.env.STATION_DISCOVERY_URL ||
         `http://localhost:${BASE_PORTS.STATION_DISCOVERY}`,
-    STATION_MANAGEMENT:
-        process.env.STATION_MANAGEMENT_URL ||
-        `http://localhost:${BASE_PORTS.STATION_MANAGEMENT}`,
-    BOOKING_SCHEDULING:
-        process.env.BOOKING_SERVICE_URL ||
-        `http://localhost:${BASE_PORTS.BOOKING_SCHEDULING}`,
     PAYMENT_WALLET:
         process.env.PAYMENT_SERVICE_URL ||
         `http://localhost:${BASE_PORTS.PAYMENT_WALLET}`,
-    CHARGING_SESSION:
-        process.env.CHARGING_SERVICE_URL ||
-        `http://localhost:${BASE_PORTS.CHARGING_SESSION}`,
     NOTIFICATION_ALERTS:
         process.env.NOTIFICATION_SERVICE_URL ||
         `http://localhost:${BASE_PORTS.NOTIFICATION_ALERTS}`,
-    USAGE_ANALYTICS:
-        process.env.ANALYTICS_SERVICE_URL ||
-        `http://localhost:${BASE_PORTS.USAGE_ANALYTICS}`,
 };
 
 // Gateway port
@@ -82,25 +57,16 @@ export const SERVICE_ENABLEMENT = {
     "auth-management": true,
 
     // Station & Discovery Services
-    "station-discovery": true,
-    "station-management": false,
+    "station-management": true,
 
     // Vehicle Services
-    "vehicle-management": false,
-
-    // Charging & Booking Services
-    "charging-session": false,
-    "booking-scheduling": false,
+    "vehicle-management": true,
 
     // Payment & Wallet Services
     "payment-wallet": false,
 
     // Communication Services
     "notification-alerts": false,
-    "bluetooth-pairing": false,
-
-    // Analytics Services
-    "usage-analytics": false,
 };
 
 /**

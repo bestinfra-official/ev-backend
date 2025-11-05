@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import multer from "multer";
 import dotenv from "dotenv";
 import {
     createLogger,
@@ -42,39 +41,6 @@ app.use(
 );
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-// Configure multer for form-data support
-const storage = multer.memoryStorage();
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB limit
-        files: 5, // Maximum 5 files
-        fields: 20, // Maximum 20 fields
-        fieldNameSize: 100, // Maximum field name size
-        fieldSize: 1024 * 1024, // 1MB field value limit
-    },
-    fileFilter: (req, file, cb) => {
-        // Allow common file types for authentication (documents, images)
-        const allowedTypes = [
-            "image/jpeg",
-            "image/png",
-            "image/gif",
-            "application/pdf",
-            "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ];
-
-        if (allowedTypes.includes(file.mimetype)) {
-            cb(null, true);
-        } else {
-            cb(new Error(`File type ${file.mimetype} not allowed`), false);
-        }
-    },
-});
-
-// Apply multer middleware for form-data support
-app.use(upload.any());
 
 // API Routes - V1 (Stable)
 app.use("/v1", authRoutesV1);

@@ -30,28 +30,10 @@ export const versionedRoutes = [
         supportedVersions: SERVICE_VERSION_SUPPORT["vehicle-management"],
     },
     {
-        segment: "bluetooth",
-        target: SERVICE_URLS.BLUETOOTH_PAIRING,
-        serviceName: "bluetooth-pairing",
-        supportedVersions: SERVICE_VERSION_SUPPORT["bluetooth-pairing"],
-    },
-    {
         segment: "stations",
         target: SERVICE_URLS.STATION_DISCOVERY,
-        serviceName: "station-discovery",
-        supportedVersions: SERVICE_VERSION_SUPPORT["station-discovery"],
-    },
-    {
-        segment: "station-management",
-        target: SERVICE_URLS.STATION_MANAGEMENT,
         serviceName: "station-management",
         supportedVersions: SERVICE_VERSION_SUPPORT["station-management"],
-    },
-    {
-        segment: "bookings",
-        target: SERVICE_URLS.BOOKING_SCHEDULING,
-        serviceName: "booking-scheduling",
-        supportedVersions: SERVICE_VERSION_SUPPORT["booking-scheduling"],
     },
     {
         segment: "payments",
@@ -60,22 +42,10 @@ export const versionedRoutes = [
         supportedVersions: SERVICE_VERSION_SUPPORT["payment-wallet"],
     },
     {
-        segment: "charging",
-        target: SERVICE_URLS.CHARGING_SESSION,
-        serviceName: "charging-session",
-        supportedVersions: SERVICE_VERSION_SUPPORT["charging-session"],
-    },
-    {
         segment: "notifications",
         target: SERVICE_URLS.NOTIFICATION_ALERTS,
         serviceName: "notification-alerts",
         supportedVersions: SERVICE_VERSION_SUPPORT["notification-alerts"],
-    },
-    {
-        segment: "analytics",
-        target: SERVICE_URLS.USAGE_ANALYTICS,
-        serviceName: "usage-analytics",
-        supportedVersions: SERVICE_VERSION_SUPPORT["usage-analytics"],
     },
 ];
 
@@ -96,24 +66,9 @@ export const legacyRoutes = [
         serviceName: "vehicle-management",
     },
     {
-        path: "/api/bluetooth",
-        target: SERVICE_URLS.BLUETOOTH_PAIRING,
-        serviceName: "bluetooth-pairing",
-    },
-    {
         path: "/api/stations",
         target: SERVICE_URLS.STATION_DISCOVERY,
-        serviceName: "station-discovery",
-    },
-    {
-        path: "/api/station-management",
-        target: SERVICE_URLS.STATION_MANAGEMENT,
         serviceName: "station-management",
-    },
-    {
-        path: "/api/bookings",
-        target: SERVICE_URLS.BOOKING_SCHEDULING,
-        serviceName: "booking-scheduling",
     },
     {
         path: "/api/payments",
@@ -121,19 +76,9 @@ export const legacyRoutes = [
         serviceName: "payment-wallet",
     },
     {
-        path: "/api/charging",
-        target: SERVICE_URLS.CHARGING_SESSION,
-        serviceName: "charging-session",
-    },
-    {
         path: "/api/notifications",
         target: SERVICE_URLS.NOTIFICATION_ALERTS,
         serviceName: "notification-alerts",
-    },
-    {
-        path: "/api/analytics",
-        target: SERVICE_URLS.USAGE_ANALYTICS,
-        serviceName: "usage-analytics",
     },
 ];
 
