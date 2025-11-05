@@ -40,14 +40,9 @@ export const VERSION_STATUS = {
 export const SERVICE_VERSION_SUPPORT = {
     "auth-management": ["v1"],
     "vehicle-management": ["v1"],
-    "bluetooth-pairing": ["v1"],
-    "station-discovery": ["v1"],
     "station-management": ["v1"],
-    "booking-scheduling": ["v1"],
     "payment-wallet": ["v1"],
-    "charging-session": ["v1"],
     "notification-alerts": ["v1"],
-    "usage-analytics": ["v1"],
 };
 
 /**

@@ -182,8 +182,12 @@ class VehicleModel {
         const query = `
             SELECT
                 id as vehicle_id,
+                reg_number,
+                battery_capacity_kwh,
+                efficiency_kwh_per_km,
                 make,
-                model
+                model,
+                image_url
             FROM vehicles
             WHERE id = ANY($1)
         `;
@@ -192,36 +196,6 @@ class VehicleModel {
         const map = {};
         result.rows.forEach((vehicle) => {
             map[vehicle.vehicle_id] = vehicle;
-        });
-        return map;
-    }
-
-    /**
-     * Find latest status for vehicles by IDs
-     * @param {Array<string>} vehicleIds - Array of vehicle IDs
-     * @returns {Promise<object>} Map of vehicle_id to status object
-     */
-    async findLatestStatusByIds(vehicleIds) {
-        if (vehicleIds.length === 0) return {};
-
-        const query = `
-            SELECT
-                vehicle_id,
-                battery_level_percent,
-                range_km,
-                recorded_at
-            FROM latest_vehicle_status
-            WHERE vehicle_id = ANY($1)
-        `;
-
-        const result = await database.query(query, [vehicleIds]);
-        const map = {};
-        result.rows.forEach((status) => {
-            map[status.vehicle_id] = {
-                battery_level_percent: status.battery_level_percent,
-                range_km: status.range_km,
-                recorded_at: status.recorded_at,
-            };
         });
         return map;
     }

@@ -455,35 +455,6 @@ const swaggerSpec = {
                         },
                         required: ["reg_number"],
                     },
-                    status_info: {
-                        type: "object",
-                        nullable: true,
-                        description:
-                            "Latest vehicle status (included if 'latest_status' expansion requested)",
-                        properties: {
-                            battery_level_percent: {
-                                type: "number",
-                                nullable: true,
-                                example: 85.5,
-                                description:
-                                    "Current battery level percentage (0-100)",
-                            },
-                            range_km: {
-                                type: "number",
-                                nullable: true,
-                                example: 240.0,
-                                description: "Estimated range in kilometers",
-                            },
-                            recorded_at: {
-                                type: "string",
-                                format: "date-time",
-                                nullable: true,
-                                example: "2024-01-15T10:25:00Z",
-                                description:
-                                    "Timestamp when the status was recorded",
-                            },
-                        },
-                    },
                 },
                 required: [
                     "id",
@@ -1132,7 +1103,7 @@ const swaggerSpec = {
         {
             name: "Vehicle Management",
             description:
-                "Vehicle pairing and device management endpoints. Handles pairing vehicles with Bluetooth devices, retrieving paired devices with pagination, filtering, and expansions. Includes safety features like advisory locks, idempotency, and transactional guarantees. (Fully Implemented)",
+                "Vehicle and Bluetooth device pairing endpoints with pagination, filtering, and safety features (Fully Implemented)",
         },
     ],
     security: [

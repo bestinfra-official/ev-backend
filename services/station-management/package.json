@@ -1,18 +1,22 @@
 {
     "name": "@ev-platform/station-management",
     "version": "1.0.0",
-    "description": "Station Management Microservice - Admin Station Configuration and Management",
+    "description": "Station Management Microservice - Find charging stations within vehicle range",
     "type": "module",
     "main": "index.js",
     "scripts": {
         "start": "node index.js",
         "dev": "node --watch index.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "node test-station-management.js",
+        "test:manual": "node test-station-management.js",
+        "lint": "echo \"Add linting here\""
     },
     "keywords": [
         "microservice",
         "station-management",
-        "ev-platform"
+        "charging-stations",
+        "ev-platform",
+        "geospatial"
     ],
     "author": "EV Platform Team",
     "license": "MIT",
@@ -21,14 +25,19 @@
         "cors": "^2.8.5",
         "dotenv": "^17.2.3",
         "express": "^5.1.0",
+        "express-rate-limit": "^8.1.0",
         "helmet": "^8.1.0",
-        "jsonwebtoken": "^9.0.2",
+        "ioredis": "^5.8.1",
         "pg": "^8.16.3",
-        "pino": "^10.0.0",
-        "pino-pretty": "^13.1.1"
+        "socket.io": "^4.7.5",
+        "zod": "^4.1.12"
     },
     "engines": {
         "node": ">=18.0.0",
         "npm": ">=9.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^24.7.1",
+        "node-fetch": "^3.3.2"
     }
 }

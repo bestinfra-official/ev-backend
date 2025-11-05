@@ -398,12 +398,12 @@ export default {
                     name: "include",
                     in: "query",
                     description:
-                        "Comma-separated list of expansions to include. Available options: 'vehicle' (vehicle make/model), 'latest_status' (battery level, range). Default: 'vehicle,latest_status'",
+                        "Comma-separated list of expansions to include. Available options: 'vehicle' (vehicle make/model). Default: 'vehicle'",
                     required: false,
                     schema: {
                         type: "string",
-                        default: "vehicle,latest_status",
-                        example: "vehicle,latest_status",
+                        default: "vehicle",
+                        example: "vehicle",
                     },
                 },
                 {
@@ -573,12 +573,6 @@ export default {
                                                         make: "Tata",
                                                         model: "Nexon EV",
                                                     },
-                                                    status_info: {
-                                                        battery_level_percent: 85.5,
-                                                        range_km: 240.0,
-                                                        recorded_at:
-                                                            "2024-01-15T10:25:00Z",
-                                                    },
                                                 },
                                                 {
                                                     id: "550e8400-e29b-41d4-a716-446655440001",
@@ -594,12 +588,6 @@ export default {
                                                             "DL02CD5678",
                                                         make: "MG",
                                                         model: "ZS EV",
-                                                    },
-                                                    status_info: {
-                                                        battery_level_percent: 92.0,
-                                                        range_km: 320.0,
-                                                        recorded_at:
-                                                            "2024-01-15T10:20:00Z",
                                                     },
                                                 },
                                             ],
@@ -726,7 +714,7 @@ export default {
                                         details: {
                                             field: "include",
                                             message:
-                                                "Include must be one or more of: vehicle, latest_status",
+                                                "Include must be one or more of: vehicle",
                                         },
                                         timestamp: "2024-01-15T10:30:00Z",
                                     },
@@ -751,6 +739,534 @@ export default {
                                         success: false,
                                         message: "Invalid pagination cursor",
                                         error: "INVALID_CURSOR",
+                                        timestamp: "2024-01-15T10:30:00Z",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                401: {
+                    description:
+                        "Unauthorized - Invalid or missing Bearer token. Include `Authorization: Bearer <your-access-token>` header.",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                $ref: "#/components/schemas/ErrorResponse",
+                            },
+                            examples: {
+                                missingToken: {
+                                    summary: "Missing Bearer Token",
+                                    value: {
+                                        success: false,
+                                        message:
+                                            "Authorization header is required. Include 'Bearer <your-access-token>'",
+                                        error: "UNAUTHORIZED",
+                                        timestamp: "2024-01-15T10:30:00Z",
+                                    },
+                                },
+                                invalidToken: {
+                                    summary: "Invalid Bearer Token",
+                                    value: {
+                                        success: false,
+                                        message:
+                                            "Invalid or expired Bearer token",
+                                        error: "UNAUTHORIZED",
+                                        timestamp: "2024-01-15T10:30:00Z",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                429: {
+                    description: "Rate limit exceeded",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                allOf: [
+                                    {
+                                        $ref: "#/components/schemas/ErrorResponse",
+                                    },
+                                    {
+                                        properties: {
+                                            details: {
+                                                $ref: "#/components/schemas/RateLimitInfo",
+                                            },
+                                        },
+                                    },
+                                ],
+                            },
+                            example: {
+                                success: false,
+                                message: "Too many requests",
+                                error: "RATE_LIMITED",
+                                details: {
+                                    retryAfter: 60,
+                                    reason: "too_many_requests",
+                                },
+                                timestamp: "2024-01-15T10:30:00Z",
+                            },
+                        },
+                    },
+                },
+                500: {
+                    $ref: "#/components/responses/InternalServerError",
+                },
+            },
+        },
+    },
+
+    "/api/v1/vehicles/all": {
+        get: {
+            tags: ["Vehicle Management"],
+            summary: "Get Vehicles",
+            description:
+                "Get paginated list of vehicles for the authenticated user with optional filtering and sorting. Returns vehicles with their basic information, battery status, and range calculations.",
+            operationId: "getVehicles",
+            security: [
+                {
+                    BearerAuth: [],
+                },
+            ],
+            parameters: [
+                {
+                    $ref: "#/components/parameters/VersionHeader",
+                },
+                {
+                    name: "active",
+                    in: "query",
+                    description:
+                        "Filter by active status. If 'true', returns only active vehicles. If 'false', returns only inactive. If omitted, returns all.",
+                    required: false,
+                    schema: {
+                        type: "string",
+                        enum: ["true", "false"],
+                        example: "true",
+                    },
+                },
+                {
+                    name: "limit",
+                    in: "query",
+                    description:
+                        "Number of items per page. Minimum: 1, Maximum: 100, Default: 10",
+                    required: false,
+                    schema: {
+                        type: "integer",
+                        minimum: 1,
+                        maximum: 100,
+                        default: 10,
+                        example: 10,
+                    },
+                },
+                {
+                    name: "cursor",
+                    in: "query",
+                    description:
+                        "Pagination cursor from the 'next_cursor' field of the previous response. Use for fetching the next page of results.",
+                    required: false,
+                    schema: {
+                        type: "string",
+                        example:
+                            "eyJsYXN0X3NlZW4iOiIyMDI0LTAxLTE1VDEwOjMwOjAwWiIsImlkIjoiNTUwZTg0MDAtZTI5Yi00MWQ0LWE3MTYtNDQ2NjU1NDQwMDAwIn0=",
+                    },
+                },
+                {
+                    name: "sort",
+                    in: "query",
+                    description:
+                        "Sort order for the results. 'last_seen_desc' sorts by most recently seen first. 'make' sorts alphabetically by vehicle make.",
+                    required: false,
+                    schema: {
+                        type: "string",
+                        enum: ["last_seen_desc", "make"],
+                        default: "last_seen_desc",
+                        example: "last_seen_desc",
+                    },
+                },
+                {
+                    name: "selected_vehicle_id",
+                    in: "query",
+                    description:
+                        "Optional vehicle ID to include at the beginning of results, even if it doesn't match other filters. Useful for highlighting a specific vehicle.",
+                    required: false,
+                    schema: {
+                        type: "string",
+                        format: "uuid",
+                        example:
+                            "550e8400-e29b-41d4-a716-446655440000",
+                    },
+                },
+            ],
+            responses: {
+                200: {
+                    description: "Vehicles retrieved successfully",
+                    headers: {
+                        "X-Total-Active": {
+                            description:
+                                "Total number of active vehicles for the user",
+                            schema: {
+                                type: "integer",
+                                example: 3,
+                            },
+                        },
+                        "X-Total-All": {
+                            description:
+                                "Total number of all vehicles (active + inactive) for the user",
+                            schema: {
+                                type: "integer",
+                                example: 5,
+                            },
+                        },
+                        "Cache-Control": {
+                            description: "Cache control header",
+                            schema: {
+                                type: "string",
+                                example: "private, max-age=10",
+                            },
+                        },
+                    },
+                    content: {
+                        "application/json": {
+                            schema: {
+                                allOf: [
+                                    {
+                                        $ref: "#/components/schemas/SuccessResponse",
+                                    },
+                                    {
+                                        properties: {
+                                            data: {
+                                                type: "object",
+                                                properties: {
+                                                    data: {
+                                                        type: "array",
+                                                        items: {
+                                                            type: "object",
+                                                            properties: {
+                                                                vehicle_id: {
+                                                                    type: "string",
+                                                                    format: "uuid",
+                                                                    example:
+                                                                        "550e8400-e29b-41d4-a716-446655440000",
+                                                                    description:
+                                                                        "Unique identifier for the vehicle",
+                                                                },
+                                                                reg_number: {
+                                                                    type: "string",
+                                                                    nullable: true,
+                                                                    example:
+                                                                        "DL01AB1234",
+                                                                    description:
+                                                                        "Vehicle registration number",
+                                                                },
+                                                                display_name: {
+                                                                    type: "string",
+                                                                    example:
+                                                                        "Tata Nexon EV",
+                                                                    description:
+                                                                        "Display name constructed from make and model",
+                                                                },
+                                                                image_url: {
+                                                                    type: "string",
+                                                                    nullable: true,
+                                                                    example:
+                                                                        "http://localhost:7100/images/vehicles/tata-nexon-ev.jpg",
+                                                                    description:
+                                                                        "Full URL to vehicle image",
+                                                                },
+                                                                is_active: {
+                                                                    type: "boolean",
+                                                                    example: true,
+                                                                    description:
+                                                                        "Whether the vehicle is currently active (paired and connected)",
+                                                                },
+                                                                status: {
+                                                                    type: "object",
+                                                                    properties: {
+                                                                        battery_capacity_kwh: {
+                                                                            type: "number",
+                                                                            nullable: true,
+                                                                            example: 30.0,
+                                                                            description:
+                                                                                "Vehicle battery capacity in kilowatt-hours",
+                                                                        },
+                                                                        range_km: {
+                                                                            type: "number",
+                                                                            nullable: true,
+                                                                            example: 200.0,
+                                                                            description:
+                                                                                "Calculated vehicle range in kilometers (battery_capacity_kwh / efficiency_kwh_per_km)",
+                                                                        },
+                                                                    },
+                                                                    required: [
+                                                                        "battery_capacity_kwh",
+                                                                        "range_km",
+                                                                    ],
+                                                                    description:
+                                                                        "Vehicle battery status information",
+                                                                },
+                                                            },
+                                                            required: [
+                                                                "vehicle_id",
+                                                                "display_name",
+                                                                "is_active",
+                                                                "status",
+                                                            ],
+                                                        },
+                                                        description:
+                                                            "Array of vehicles",
+                                                    },
+                                                    page_info: {
+                                                        type: "object",
+                                                        properties: {
+                                                            next_cursor: {
+                                                                type: "string",
+                                                                nullable: true,
+                                                                example:
+                                                                    "eyJsYXN0X3NlZW4iOiIyMDI0LTAxLTE1VDEwOjMwOjAwWiIsImlkIjoiNTUwZTg0MDAtZTI5Yi00MWQ0LWE3MTYtNDQ2NjU1NDQwMDAwIn0=",
+                                                                description:
+                                                                    "Base64-encoded cursor for the next page. Null if this is the last page.",
+                                                            },
+                                                            limit: {
+                                                                type: "integer",
+                                                                example: 10,
+                                                                description:
+                                                                    "Number of items requested per page",
+                                                            },
+                                                            has_more: {
+                                                                type: "boolean",
+                                                                example: true,
+                                                                description:
+                                                                    "Whether there are more pages available",
+                                                            },
+                                                        },
+                                                        required: [
+                                                            "next_cursor",
+                                                            "limit",
+                                                            "has_more",
+                                                        ],
+                                                    },
+                                                    counts: {
+                                                        type: "object",
+                                                        properties: {
+                                                            total_active: {
+                                                                type: "integer",
+                                                                example: 3,
+                                                                description:
+                                                                    "Total number of active vehicles",
+                                                            },
+                                                            total_all: {
+                                                                type: "integer",
+                                                                example: 5,
+                                                                description:
+                                                                    "Total number of all vehicles (active + inactive)",
+                                                            },
+                                                        },
+                                                        required: [
+                                                            "total_active",
+                                                            "total_all",
+                                                        ],
+                                                    },
+                                                },
+                                                required: [
+                                                    "data",
+                                                    "page_info",
+                                                    "counts",
+                                                ],
+                                            },
+                                        },
+                                    },
+                                ],
+                            },
+                            examples: {
+                                success: {
+                                    summary: "Successful Response",
+                                    value: {
+                                        success: true,
+                                        message:
+                                            "Vehicles retrieved successfully",
+                                        data: {
+                                            data: [
+                                                {
+                                                    vehicle_id:
+                                                        "550e8400-e29b-41d4-a716-446655440000",
+                                                    reg_number: "DL01AB1234",
+                                                    display_name:
+                                                        "Tata Nexon EV",
+                                                    image_url:
+                                                        "http://localhost:7100/images/vehicles/tata-nexon-ev.jpg",
+                                                    is_active: true,
+                                                    status: {
+                                                        battery_capacity_kwh:
+                                                            30.0,
+                                                        range_km: 200.0,
+                                                    },
+                                                },
+                                                {
+                                                    vehicle_id:
+                                                        "550e8400-e29b-41d4-a716-446655440001",
+                                                    reg_number: "DL02CD5678",
+                                                    display_name: "MG ZS EV",
+                                                    image_url: null,
+                                                    is_active: true,
+                                                    status: {
+                                                        battery_capacity_kwh:
+                                                            44.5,
+                                                        range_km: 296.67,
+                                                    },
+                                                },
+                                            ],
+                                            page_info: {
+                                                next_cursor:
+                                                    "eyJsYXN0X3NlZW4iOiIyMDI0LTAxLTE1VDEwOjMwOjAwWiIsImlkIjoiNTUwZTg0MDAtZTI5Yi00MWQ0LWE3MTYtNDQ2NjU1NDQwMDAwIn0=",
+                                                limit: 10,
+                                                has_more: false,
+                                            },
+                                            counts: {
+                                                total_active: 3,
+                                                total_all: 5,
+                                            },
+                                        },
+                                        timestamp: "2024-01-15T10:30:00Z",
+                                    },
+                                },
+                                paginated: {
+                                    summary: "Paginated Response",
+                                    description:
+                                        "When there are more results, 'has_more' is true and 'next_cursor' is provided for fetching the next page.",
+                                    value: {
+                                        success: true,
+                                        message:
+                                            "Vehicles retrieved successfully",
+                                        data: {
+                                            data: [
+                                                {
+                                                    vehicle_id:
+                                                        "550e8400-e29b-41d4-a716-446655440000",
+                                                    reg_number: "DL01AB1234",
+                                                    display_name:
+                                                        "Tata Nexon EV",
+                                                    image_url: null,
+                                                    is_active: true,
+                                                    status: {
+                                                        battery_capacity_kwh:
+                                                            30.0,
+                                                        range_km: 200.0,
+                                                    },
+                                                },
+                                            ],
+                                            page_info: {
+                                                next_cursor:
+                                                    "eyJsYXN0X3NlZW4iOiIyMDI0LTAxLTE1VDEwOjMwOjAwWiIsImlkIjoiNTUwZTg0MDAtZTI5Yi00MWQ0LWE3MTYtNDQ2NjU1NDQwMDAwIn0=",
+                                                limit: 10,
+                                                has_more: true,
+                                            },
+                                            counts: {
+                                                total_active: 15,
+                                                total_all: 20,
+                                            },
+                                        },
+                                        timestamp: "2024-01-15T10:30:00Z",
+                                    },
+                                },
+                                empty: {
+                                    summary: "Empty Response",
+                                    description:
+                                        "When no vehicles are found, returns empty data array with pagination info.",
+                                    value: {
+                                        success: true,
+                                        message:
+                                            "Vehicles retrieved successfully",
+                                        data: {
+                                            data: [],
+                                            page_info: {
+                                                next_cursor: null,
+                                                limit: 10,
+                                                has_more: false,
+                                            },
+                                            counts: {
+                                                total_active: 0,
+                                                total_all: 0,
+                                            },
+                                        },
+                                        timestamp: "2024-01-15T10:30:00Z",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                400: {
+                    description:
+                        "Validation error or invalid request parameters",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                $ref: "#/components/schemas/ErrorResponse",
+                            },
+                            examples: {
+                                invalidActive: {
+                                    summary: "Invalid Active Parameter",
+                                    value: {
+                                        success: false,
+                                        message: "Validation failed",
+                                        error: "VALIDATION_ERROR",
+                                        details: {
+                                            field: "active",
+                                            message:
+                                                "Active must be 'true' or 'false'",
+                                        },
+                                        timestamp: "2024-01-15T10:30:00Z",
+                                    },
+                                },
+                                invalidLimit: {
+                                    summary: "Invalid Limit Parameter",
+                                    value: {
+                                        success: false,
+                                        message: "Validation failed",
+                                        error: "VALIDATION_ERROR",
+                                        details: {
+                                            field: "limit",
+                                            message:
+                                                "Limit must be between 1 and 100",
+                                        },
+                                        timestamp: "2024-01-15T10:30:00Z",
+                                    },
+                                },
+                                invalidCursor: {
+                                    summary: "Invalid Pagination Cursor",
+                                    value: {
+                                        success: false,
+                                        message: "Invalid pagination cursor",
+                                        error: "INVALID_CURSOR",
+                                        timestamp: "2024-01-15T10:30:00Z",
+                                    },
+                                },
+                                invalidSort: {
+                                    summary: "Invalid Sort Parameter",
+                                    value: {
+                                        success: false,
+                                        message: "Validation failed",
+                                        error: "VALIDATION_ERROR",
+                                        details: {
+                                            field: "sort",
+                                            message:
+                                                "Sort must be 'last_seen_desc' or 'make'",
+                                        },
+                                        timestamp: "2024-01-15T10:30:00Z",
+                                    },
+                                },
+                                invalidVehicleId: {
+                                    summary: "Invalid Selected Vehicle ID",
+                                    value: {
+                                        success: false,
+                                        message: "Validation failed",
+                                        error: "VALIDATION_ERROR",
+                                        details: {
+                                            field: "selected_vehicle_id",
+                                            message:
+                                                "Selected vehicle ID must be a valid UUID",
+                                        },
                                         timestamp: "2024-01-15T10:30:00Z",
                                     },
                                 },

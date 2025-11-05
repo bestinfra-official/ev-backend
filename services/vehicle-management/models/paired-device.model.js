@@ -249,6 +249,80 @@ class PairedDeviceModel {
 
         return parseInt(result.rows[0].count, 10);
     }
+
+    /**
+     * Find paired devices for vehicles with optimized query
+     * Supports keyset pagination, filtering, and multiple sort options
+     * @param {object} params - Query parameters
+     * @param {number} params.userId - User ID
+     * @param {boolean} params.active - Filter by active status (optional)
+     * @param {number} params.limit - Limit for pagination
+     * @param {string} params.lastSeenCursor - Cursor for last_seen field
+     * @param {string} params.idCursor - Cursor for id field
+     * @param {string} params.sort - Sort order (last_seen_desc, make)
+     * @returns {Promise<Array>} Array of paired devices with vehicle_id
+     */
+    async findForVehicles({
+        userId,
+        active,
+        limit,
+        lastSeenCursor,
+        idCursor,
+        sort,
+    }) {
+        let orderBy;
+        let whereClause = "WHERE pd.user_id = $1";
+        const queryParams = [userId];
+        let paramIndex = 2;
+        let cursorCondition = "";
+
+        // Build order by clause based on sort
+        if (sort === "make") {
+            // Sort by vehicle make (requires join with vehicles)
+            orderBy = "COALESCE(v.make, '') ASC, pd.last_seen DESC, pd.id ASC";
+        } else {
+            // Default: last_seen_desc (battery_desc no longer supported)
+            orderBy = "pd.last_seen DESC, pd.id ASC";
+        }
+
+        // Apply active filter
+        if (active !== undefined) {
+            whereClause += ` AND pd.is_active = $${paramIndex++}`;
+            queryParams.push(active);
+        }
+
+        // Apply cursor for pagination
+        // Note: For simplicity, cursor pagination works best with last_seen_desc
+        // For other sorts, we still use last_seen/id cursor but sort differently
+        if (lastSeenCursor && idCursor) {
+            // Use last_seen and id for cursor regardless of sort (simpler and more performant)
+            cursorCondition = ` AND (pd.last_seen, pd.id) < ($${paramIndex++}, $${paramIndex++})`;
+            queryParams.push(lastSeenCursor, idCursor);
+            whereClause += cursorCondition;
+        }
+
+        // Build query with appropriate joins
+        let fromClause = "FROM paired_devices pd";
+        if (sort === "make") {
+            fromClause += " LEFT JOIN vehicles v ON v.id = pd.vehicle_id";
+        }
+
+        const query = `
+            SELECT
+                pd.id as paired_device_id,
+                pd.vehicle_id,
+                pd.is_active,
+                pd.last_seen
+            ${fromClause}
+            ${whereClause}
+            ORDER BY ${orderBy}
+            LIMIT $${paramIndex}
+        `;
+        queryParams.push(limit);
+
+        const result = await database.query(query, queryParams);
+        return result.rows;
+    }
 }
 
 // Export singleton instance

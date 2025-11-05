@@ -22,19 +22,18 @@ export const pairedDevicesQuerySchema = z.object({
         include: z
             .string()
             .optional()
-            .default("vehicle,latest_status")
+            .default("vehicle")
             .transform((val) => {
-                if (!val) return ["vehicle", "latest_status"];
+                if (!val) return ["vehicle"];
                 return val.split(",").map((item) => item.trim());
             })
             .refine(
                 (val) => {
-                    const allowedIncludes = ["vehicle", "latest_status"];
+                    const allowedIncludes = ["vehicle"];
                     return val.every((item) => allowedIncludes.includes(item));
                 },
                 {
-                    message:
-                        "Include must be one or more of: vehicle, latest_status",
+                    message: "Include must be one or more of: vehicle",
                 }
             ),
         limit: z.coerce

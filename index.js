@@ -25,11 +25,17 @@ import {
 import { getAllVersions, DEFAULT_VERSION } from "./config/versions.config.js";
 import { GATEWAY_PORT } from "./config/services.config.js";
 import { redis } from "./shared/index.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config({ silent: true });
 
 const app = express();
 const PORT = process.env.PORT || GATEWAY_PORT;
+
+// Get directory path for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Middleware
 app.use(
@@ -47,6 +53,9 @@ app.use(
         allowedHeaders: ["Content-Type", "Authorization", "X-API-Version"],
     })
 );
+
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, "public")));
 
 // Create body parser middlewares
 const jsonParser = express.json({ limit: "10mb" });

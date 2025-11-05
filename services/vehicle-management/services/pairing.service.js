@@ -218,7 +218,7 @@ class PairingService {
      * @param {object} params - Query parameters
      * @param {number} params.userId - User ID
      * @param {boolean} params.active - Filter by active status (optional)
-     * @param {string[]} params.include - Include expansions (vehicle, latest_status)
+     * @param {string[]} params.include - Include expansions (vehicle)
      * @param {number} params.limit - Page size (1-100)
      * @param {string} params.cursor - Pagination cursor
      * @param {string} params.sort - Sort order
@@ -228,7 +228,7 @@ class PairingService {
         const {
             userId,
             active,
-            include = ["vehicle", "latest_status"],
+            include = ["vehicle"],
             limit = 20,
             cursor,
             sort = "last_seen_desc",
@@ -236,7 +236,7 @@ class PairingService {
 
         try {
             // Normalize include to array (validation schema handles most of this)
-            let includeArray = include || ["vehicle", "latest_status"];
+            let includeArray = include || ["vehicle"];
             if (!Array.isArray(includeArray)) {
                 includeArray = includeArray
                     .split(",")
@@ -244,7 +244,7 @@ class PairingService {
                     .filter(Boolean);
             }
             if (includeArray.length === 0) {
-                includeArray = ["vehicle", "latest_status"];
+                includeArray = ["vehicle"];
             }
 
             // Get version for cache invalidation
@@ -287,7 +287,6 @@ class PairingService {
 
             // Get expansions if requested
             let vehicleMap = {};
-            let statusMap = {};
 
             if (includeArray.includes("vehicle") && page.length > 0) {
                 const vehicleIds = page
@@ -296,25 +295,13 @@ class PairingService {
                 vehicleMap = await Vehicle.findByIds(vehicleIds);
             }
 
-            if (includeArray.includes("latest_status") && page.length > 0) {
-                const vehicleIds = page
-                    .map((pd) => pd.vehicle_id)
-                    .filter((id) => id);
-                statusMap = await this.getLatestStatusMap(vehicleIds);
-            }
-
             // Get counts from cache or DB
             const { totalActive, totalAll } = await this.getCounts(userId);
 
             // Assemble response
             const response = {
                 data: page.map((pd) =>
-                    this.formatPairedDevice(
-                        pd,
-                        vehicleMap,
-                        statusMap,
-                        includeArray
-                    )
+                    this.formatPairedDevice(pd, vehicleMap, includeArray)
                 ),
                 page_info: {
                     next_cursor: nextCursor,
@@ -401,74 +388,6 @@ class PairingService {
     }
 
     /**
-     * Get latest status map for given vehicle IDs
-     */
-    async getLatestStatusMap(vehicleIds) {
-        if (vehicleIds.length === 0) return {};
-
-        // Try to get from Redis cache first - optimized with mget for batch operations
-        const cacheKeys = vehicleIds.map((id) => `lvs:${id}`);
-        let cachedResults = [];
-
-        try {
-            const values = await redis.mget(...cacheKeys);
-            cachedResults = values.map((val, idx) => {
-                if (val) {
-                    try {
-                        return {
-                            vehicleId: vehicleIds[idx],
-                            status: JSON.parse(val),
-                        };
-                    } catch (parseError) {
-                        logger.warn("Failed to parse cached status", {
-                            vehicleId: vehicleIds[idx],
-                        });
-                        return null;
-                    }
-                }
-                return null;
-            });
-        } catch (error) {
-            logger.warn("Batch cache get failed", { error: error.message });
-            // Fall back to empty array
-            cachedResults = [];
-        }
-
-        const map = {};
-        const uncachedIds = [];
-
-        cachedResults.forEach((result, idx) => {
-            if (result) {
-                map[result.vehicleId] = result.status;
-            } else {
-                uncachedIds.push(vehicleIds[idx]);
-            }
-        });
-
-        // For uncached vehicles, try to get from DB
-        if (uncachedIds.length > 0) {
-            try {
-                const dbStatusMap = await Vehicle.findLatestStatusByIds(
-                    uncachedIds
-                );
-                Object.assign(map, dbStatusMap);
-            } catch (error) {
-                logger.warn("Failed to get latest status from DB", {
-                    error: error.message,
-                });
-                // Return empty status for uncached vehicles
-                uncachedIds.forEach((vehicleId) => {
-                    if (!map[vehicleId]) {
-                        map[vehicleId] = null;
-                    }
-                });
-            }
-        }
-
-        return map;
-    }
-
-    /**
      * Get counts for active and total paired devices
      */
     async getCounts(userId) {
@@ -506,7 +425,7 @@ class PairingService {
     /**
      * Format paired device for response
      */
-    formatPairedDevice(pd, vehicleMap, statusMap, include) {
+    formatPairedDevice(pd, vehicleMap, include) {
         // Ensure include is an array
         const includeArray = Array.isArray(include) ? include : [];
 
@@ -532,15 +451,6 @@ class PairingService {
             const vehicle = vehicleMap[pd.vehicle_id];
             formatted.vehicle_info.make = vehicle.make;
             formatted.vehicle_info.model = vehicle.model;
-        }
-
-        // Add latest status if requested
-        if (
-            includeArray.includes("latest_status") &&
-            pd.vehicle_id &&
-            statusMap[pd.vehicle_id]
-        ) {
-            formatted.status_info = statusMap[pd.vehicle_id];
         }
 
         return formatted;

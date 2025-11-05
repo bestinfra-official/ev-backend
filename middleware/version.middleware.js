@@ -54,14 +54,9 @@ const extractServiceName = (path) => {
     const serviceMap = {
         auth: "auth-management",
         vehicles: "vehicle-management",
-        bluetooth: "bluetooth-pairing",
-        stations: "station-discovery",
-        "station-management": "station-management",
-        bookings: "booking-scheduling",
+        stations: "station-management",
         payments: "payment-wallet",
-        charging: "charging-session",
         notifications: "notification-alerts",
-        analytics: "usage-analytics",
     };
 
     return serviceMap[serviceMatch[1]] || serviceMatch[1];
